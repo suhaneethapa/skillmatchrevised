@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SkillMatch{% endblock %}</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/skillmatch.css' %}">
+    {% block extra_css %}{% endblock %}
+    {% if user.is_authenticated %}
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    {% endif %}
+</head>
+<body>
+    {% with ns=request.resolver_match.namespace url_name=request.resolver_match.url_name %}
+    <nav class="sm-navbar">
+        <div class="sm-navbar-inner">
+            <a class="sm-brand" href="{% url 'accounts:home' %}">
+                <span class="sm-brand-mark">S</span> SkillMatch
+            </a>
+            <button class="sm-nav-toggle" id="smNavToggle" type="button" aria-label="Toggle navigation">&#9776;</button>
+            <ul class="sm-nav" id="smNav">
+                {% if user.is_authenticated %}
+                    {% if user.role == 'student' %}
+                        <li><a href="{% url 'students:dashboard' %}" {% if ns == 'students' and url_name == 'dashboard' %}class="active"{% endif %}>Dashboard</a></li>
+                        <li><a href="{% url 'students:browse_internships' %}" {% if ns == 'students' and url_name == 'browse_internships' %}class="active"{% endif %}>Browse</a></li>
+                        <li><a href="{% url 'students:profile' %}" {% if ns == 'students' and url_name == 'profile' %}class="active"{% endif %}>Profile</a></li>
+                    {% elif user.role == 'company' %}
+                        <li><a href="{% url 'companies:dashboard' %}" {% if ns == 'companies' and url_name == 'dashboard' %}class="active"{% endif %}>Dashboard</a></li>
+                        <li><a href="{% url 'companies:my_listings' %}" {% if ns == 'companies' and url_name == 'my_listings' %}class="active"{% endif %}>My Listings</a></li>
+                        <li><a href="{% url 'companies:create_listing' %}" {% if ns == 'companies' and url_name == 'create_listing' %}class="active"{% endif %}>Post Internship</a></li>
+                        <li><a href="{% url 'companies:profile' %}" {% if ns == 'companies' and url_name == 'profile' %}class="active"{% endif %}>Profile</a></li>
+                    {% elif user.is_superuser %}
+                        <li><a href="{% url 'admin_panel:dashboard' %}" {% if ns == 'admin_panel' %}class="active"{% endif %}>Admin Panel</a></li>
+                    {% endif %}
+                    <li><a href="{% url 'accounts:logout' %}">Logout</a></li>
+                {% else %}
+                    <li><a href="{% url 'accounts:login' %}" {% if ns == 'accounts' and url_name == 'login' %}class="active"{% endif %}>Login</a></li>
+                    <li><a href="{% url 'accounts:register' %}" {% if ns == 'accounts' and url_name == 'register' %}class="active"{% endif %}>Register</a></li>
+                {% endif %}
+            </ul>
+        </div>
+    </nav>
+    {% endwith %}
+
+    <main class="sm-container">
+        {% if messages %}
+            <div class="sm-alerts">
+                {% for message in messages %}
+                    <div class="sm-alert sm-alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'debug' %}info{% else %}{{ message.tags|default:'info' }}{% endif %}">
+                        <span>{{ message }}</span>
+                        <button type="button" class="sm-alert-close" data-dismiss>&times;</button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <script src="{% static 'js/skillmatch.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

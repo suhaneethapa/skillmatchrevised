@@ -1,0 +1,48 @@
+{% extends 'admin_panel/base_admin.html' %}
+
+{% block title %}Manage Users - SkillMatch{% endblock %}
+
+{% block admin_content %}
+<div class="sm-section-header">
+    <h4 class="sm-section-title">All Users</h4>
+    <div class="sm-btn-group">
+        <a href="?role=student" class="sm-btn sm-btn-outline sm-btn-sm {% if role_filter == 'student' %}sm-active{% endif %}">Students</a>
+        <a href="?role=company" class="sm-btn sm-btn-outline sm-btn-sm {% if role_filter == 'company' %}sm-active{% endif %}">Companies</a>
+        <a href="?role=admin" class="sm-btn sm-btn-outline sm-btn-sm {% if role_filter == 'admin' %}sm-active{% endif %}">Admins</a>
+        <a href="{% url 'admin_panel:user_list' %}" class="sm-btn sm-btn-outline sm-btn-sm {% if not role_filter %}sm-active{% endif %}">All</a>
+    </div>
+</div>
+
+<div class="sm-table-wrap">
+    <table class="sm-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Joined</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.id }}</td>
+                <td>{{ user.email }}</td>
+                <td><span class="badge {% if user.role == 'student' %}badge-info{% elif user.role == 'company' %}badge-primary{% else %}badge-muted{% endif %}">{{ user.role|title }}</span></td>
+                <td><span class="badge {% if user.status == 'active' %}badge-success{% elif user.status == 'pending_admin' %}badge-warning{% else %}badge-muted{% endif %}">{{ user.status|title }}</span></td>
+                <td>{{ user.date_joined|date:"M d, Y" }}</td>
+                <td>
+                    <a href="{% url 'admin_panel:toggle_user' user.id %}" class="sm-btn sm-btn-sm {% if user.status == 'active' %}sm-btn-danger-outline{% else %}sm-btn-success{% endif %}">
+                        {% if user.status == 'active' %}Suspend{% elif user.status == 'suspended' %}Reinstate{% else %}Activate{% endif %}
+                    </a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="sm-empty-cell">No users found</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

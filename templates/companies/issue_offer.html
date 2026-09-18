@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block title %}Issue Offer - SkillMatch{% endblock %}
+
+{% block content %}
+<div class="sm-narrow">
+    <div class="sm-card sm-card-pad">
+        <h4 style="margin-bottom: 14px;">Issue Offer Letter</h4>
+        <dl class="sm-dl" style="margin-bottom: 18px;">
+            <div class="sm-dl-row"><dt>To</dt><dd>{{ application.student.email }}</dd></div>
+            <div class="sm-dl-row"><dt>For</dt><dd>{{ application.internship.title }}</dd></div>
+            <div class="sm-dl-row"><dt>Match Score</dt><dd><span class="match-pill {% if application.match_score >= 70 %}match-high{% elif application.match_score >= 50 %}match-mid{% else %}match-low{% endif %}">{{ application.match_score }}%</span></dd></div>
+        </dl>
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="sm-field">
+                <label for="offer_letter">Upload Offer Letter (PDF)</label>
+                <input type="file" name="offer_letter" id="offer_letter" class="sm-input" accept=".pdf" required>
+                <p class="sm-help">Upload a formal offer letter PDF for the student.</p>
+            </div>
+            <div class="sm-actions">
+                <button type="submit" class="sm-btn sm-btn-success">Issue Offer</button>
+                <a href="{% url 'companies:view_applicants' application.internship.id %}" class="sm-btn sm-btn-outline">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

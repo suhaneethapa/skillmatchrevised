@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}Post Internship - SkillMatch{% endblock %}
+
+{% block content %}
+<div class="sm-medium">
+    <div class="sm-card sm-card-pad">
+        <h4 style="margin-bottom: 18px;">Post New Internship</h4>
+        <form method="post">
+            {% csrf_token %}
+            <div class="sm-form-row" style="grid-template-columns: 2fr 1fr;">
+                <div class="sm-field">
+                    <label for="title">Title</label>
+                    <input type="text" name="title" id="title" class="sm-input" required>
+                </div>
+                <div class="sm-field">
+                    <label for="category">Category</label>
+                    <select name="category" id="category" class="sm-select" required>
+                        {% for cat in categories %}
+                            <option value="{{ cat.id }}">{{ cat.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="sm-field">
+                <label for="description">Description</label>
+                <textarea name="description" id="description" class="sm-textarea" rows="4" required></textarea>
+            </div>
+            <div class="sm-form-row cols-3">
+                <div class="sm-field">
+                    <label for="location_type">Location</label>
+                    <select name="location_type" id="location_type" class="sm-select" required>
+                        <option value="remote">Remote</option>
+                        <option value="onsite">Onsite</option>
+                        <option value="hybrid">Hybrid</option>
+                    </select>
+                </div>
+                <div class="sm-field">
+                    <label for="stipend">Stipend (NPR)</label>
+                    <input type="number" name="stipend" id="stipend" class="sm-input">
+                </div>
+                <div class="sm-field">
+                    <label for="total_positions">Positions</label>
+                    <input type="number" name="total_positions" id="total_positions" class="sm-input" min="1" required>
+                </div>
+            </div>
+            <div class="sm-form-row">
+                <div class="sm-field">
+                    <label for="deadline">Deadline</label>
+                    <input type="date" name="deadline" id="deadline" class="sm-input" required>
+                </div>
+                <div class="sm-field">
+                    <label for="expected_duration">Duration</label>
+                    <input type="text" name="expected_duration" id="expected_duration" class="sm-input" placeholder="e.g. 3 months" required>
+                </div>
+            </div>
+            <div class="sm-field">
+                <label for="required_skills">Required Skills</label>
+                <select name="required_skills" id="required_skills" class="sm-select" multiple required>
+                    {% for skill in skills %}
+                        <option value="{{ skill.id }}">{{ skill.name }} ({{ skill.category.name }})</option>
+                    {% endfor %}
+                </select>
+                <p class="sm-help">Hold Ctrl (Cmd on Mac) to select multiple skills.</p>
+            </div>
+            <div class="sm-field">
+                <label for="preferred_skills">Preferred Skills (optional)</label>
+                <select name="preferred_skills" id="preferred_skills" class="sm-select" multiple>
+                    {% for skill in skills %}
+                        <option value="{{ skill.id }}">{{ skill.name }} ({{ skill.category.name }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="sm-btn sm-btn-primary sm-btn-block">Post Internship</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

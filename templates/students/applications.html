@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block title %}My Applications - SkillMatch{% endblock %}
+
+{% block content %}
+<div class="sm-page-header">
+    <h4 class="sm-page-title">My Applications</h4>
+</div>
+
+{% if applications %}
+    <div class="sm-grid cols-2">
+        {% for app in applications %}
+        <div class="sm-card sm-card-pad">
+            <h6 style="margin-bottom: 2px;">{{ app.internship.title }}</h6>
+            <p class="sm-muted sm-small" style="margin-bottom: 10px;">{{ app.internship.company.organization_name }}</p>
+            <div class="sm-flex-center" style="margin-bottom: 10px;">
+                <span class="badge {% if app.status == 'pending' %}badge-warning{% elif app.status == 'offer_issued' %}badge-info{% elif app.status == 'accepted' %}badge-success{% elif app.status == 'rejected' %}badge-danger{% else %}badge-muted{% endif %}">
+                    {{ app.status|title }}
+                </span>
+                <span class="match-pill {% if app.match_score >= 70 %}match-high{% elif app.match_score >= 50 %}match-mid{% else %}match-low{% endif %}">Match: {{ app.match_score }}%</span>
+            </div>
+            <p class="sm-muted sm-small" style="margin-bottom: 12px;">Applied: {{ app.applied_at|date:"M d, Y" }}</p>
+            {% if app.status == 'pending' %}
+                <a href="{% url 'students:withdraw_application' app.id %}" class="sm-btn sm-btn-danger-outline sm-btn-sm" onclick="return confirm('Withdraw this application?')">Withdraw</a>
+            {% elif app.status == 'offer_issued' %}
+                <a href="{% url 'students:view_offer' app.id %}" class="sm-btn sm-btn-success sm-btn-sm">View Offer</a>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="sm-card">
+        <div class="sm-empty">
+            <p class="sm-empty-title">No applications yet</p>
+            <p class="sm-empty-text">You have not applied to any internships.</p>
+            <a href="{% url 'students:browse_internships' %}" class="sm-btn sm-btn-primary">Browse Internships</a>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

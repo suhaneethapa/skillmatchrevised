@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+
+{% block title %}Browse Internships - SkillMatch{% endblock %}
+
+{% block content %}
+<div class="internship-page">
+    <!-- Page Header -->
+    <div class="sm-page-header">
+        <h4 class="sm-page-title">Available Internships</h4>
+        <span class="sm-page-sub">{{ listings|length }} listing{{ listings|pluralize }}</span>
+    </div>
+
+    {% if not request.user.student_profile.cv_file %}
+    <div class="sm-alert sm-alert-warning" style="margin-bottom: 16px;">
+        <span>You have not uploaded a CV. <a href="{% url 'students:profile_edit' %}">Upload your CV</a> to apply for internships.</span>
+    </div>
+    {% endif %}
+
+    <!-- Internship Grid -->
+    <div class="internship-grid">
+        {% for item in listings %}
+        <div class="internship-card">
+            <!-- Title + Match -->
+            <div class="card-header-row">
+                <div style="min-width: 0;">
+                    <div class="card-title-text">{{ item.internship.title }}</div>
+                </div>
+                <span class="match-pill {% if item.score >= 70 %}match-high{% elif item.score >= 50 %}match-mid{% else %}match-low{% endif %}">
+                    {{ item.score }}%
+                </span>
+            </div>
+
+            <!-- Company -->
+            <div class="card-company">
+                {% if item.internship.company.logo %}
+                    <img src="{{ item.internship.company.logo.url }}" alt="">
+                {% endif %}
+                {{ item.internship.company.organization_name }}
+            </div>
+
+            <!-- Description (clamped to 2 lines) -->
+            <div class="card-desc">{{ item.internship.description }}</div>
+
+            <!-- Skills -->
+            <div class="skills-row">
+                {% for skill in item.internship.internship_skills.all %}
+                    <span class="skill-tag {% if skill.is_required %}req{% else %}pref{% endif %}">
+                        {{ skill.skill.name }}
+                    </span>
+                {% empty %}
+                    <span style="font-size: 0.78rem; color: var(--sm-text-muted);">No skills specified</span>
+                {% endfor %}
+            </div>
+
+            <!-- Metadata -->
+            <div class="meta-row">
+                <span>{{ item.internship.stipend|default:"Unpaid" }}</span>
+                <span>{{ item.internship.location_type|title }}</span>
+                <span>{{ item.internship.expected_duration }}</span>
+                <span>{{ item.internship.total_positions }} slot{{ item.internship.total_positions|pluralize }}</span>
+            </div>
+
+            <!-- Match Status -->
+            <div class="match-status {% if item.gap %}missing{% else %}matched{% endif %}">
+                {% if item.gap %}
+                    Missing: {{ item.gap|join:", " }}
+                {% else %}
+                    &check; All required skills matched
+                {% endif %}
+            </div>
+
+            <!-- Footer: Deadline + Action -->
+            <div class="card-footer-row">
+                <span class="deadline-text {% if item.internship.deadline < today %}urgent{% endif %}">
+                    {% if item.internship.deadline < today %}
+                        Expired {{ item.internship.deadline|timesince }} ago
+                    {% else %}
+                        {{ item.internship.deadline|timeuntil }} left
+                    {% endif %}
+                </span>
+
+                <div>
+                    {% if item.internship.deadline < today %}
+                        <span class="badge badge-muted">Closed</span>
+                    {% elif not request.user.student_profile.cv_file %}
+                        <a href="{% url 'students:profile_edit' %}" class="sm-btn sm-btn-outline sm-btn-sm">Upload CV to Apply</a>
+                    {% elif item.eligible %}
+                        <form method="post" action="{% url 'students:apply_internship' item.internship.id %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="sm-btn sm-btn-primary sm-btn-sm">Apply</button>
+                        </form>
+                    {% else %}
+                        <span class="badge badge-muted">Need 50%</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="internship-card" style="grid-column: 1 / -1;">
+            <div class="sm-empty">
+                <p class="sm-empty-title">No internships available right now</p>
+                <p class="sm-empty-text">Check back later for new listings.</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}Login - SkillMatch{% endblock %}
+
+{% block content %}
+<div class="sm-narrow">
+    <div class="sm-card sm-card-pad">
+        <h4 style="margin-bottom: 18px;">Login</h4>
+        {% if error %}
+            <div class="sm-alert sm-alert-danger" style="margin-bottom: 16px;">
+                <span>{{ error }}</span>
+            </div>
+        {% endif %}
+        <form method="post">
+            {% csrf_token %}
+            <div class="sm-field">
+                <label for="email">Email</label>
+                <input type="email" name="email" id="email" class="sm-input" required>
+            </div>
+            <div class="sm-field">
+                <label for="password">Password</label>
+                <input type="password" name="password" id="password" class="sm-input" required>
+            </div>
+            <button type="submit" class="sm-btn sm-btn-primary sm-btn-block">Login</button>
+        </form>
+        <p style="text-align: center; margin: 16px 0 0; font-size: 0.88rem;">
+            <a href="{% url 'accounts:register' %}">Don't have an account? Register</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

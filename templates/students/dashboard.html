@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block title %}Student Dashboard - SkillMatch{% endblock %}
+
+{% block content %}
+<!-- Profile Header -->
+<div class="sm-card sm-card-pad" style="margin-bottom: 20px;">
+    <div class="sm-flex-between">
+        <div class="sm-flex-center">
+            <span class="sm-avatar">{{ request.user.email|first|upper }}</span>
+            <div>
+                <h5 style="margin-bottom: 2px;">{{ request.user.email }}</h5>
+                <p class="sm-muted sm-small" style="margin: 0;">
+                    {% if profile.college.name %}{{ profile.college.name }}{% else %}No college{% endif %} &middot;
+                    {% if profile.department %}{{ profile.department }}{% else %}No department{% endif %} &middot;
+                    Semester {% if profile.semester %}{{ profile.semester }}{% else %}Not set{% endif %}
+                </p>
+            </div>
+        </div>
+        <div class="sm-actions">
+            <a href="{% url 'students:profile_edit' %}" class="sm-btn sm-btn-outline sm-btn-sm">Edit Profile</a>
+            <a href="{% url 'students:skills_edit' %}" class="sm-btn sm-btn-outline sm-btn-sm">Edit Skills</a>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Stats -->
+<div class="sm-grid cols-3" style="margin-bottom: 20px;">
+    <div class="sm-card stat-card">
+        <div class="stat-number">{{ applications|length }}</div>
+        <div class="stat-label">My Applications</div>
+    </div>
+    <div class="sm-card stat-card">
+        <div class="stat-number">{{ skills_count|default:0 }}</div>
+        <div class="stat-label">Skills Listed</div>
+    </div>
+    <div class="sm-card stat-card" style="display: flex; align-items: center;">
+        <a href="{% url 'students:browse_internships' %}" class="sm-btn sm-btn-primary sm-btn-block">Browse Internships</a>
+    </div>
+</div>
+
+<!-- My Applications Section -->
+<div class="sm-card">
+    <div class="sm-card-header">
+        <h5>My Applications</h5>
+        <a href="{% url 'students:browse_internships' %}" class="sm-btn sm-btn-primary sm-btn-sm">+ Apply New</a>
+    </div>
+    <div class="sm-card-body">
+        {% if applications %}
+            {% for app in applications %}
+            <div class="sm-list-item">
+                <div class="sm-flex-top">
+                    <div>
+                        <h6 style="margin-bottom: 2px;">{{ app.internship.title }}</h6>
+                        <p class="sm-muted sm-small" style="margin: 0;">{{ app.internship.company.organization_name }}</p>
+                    </div>
+                    <div class="sm-flex-center">
+                        <span class="badge {% if app.status == 'pending' %}badge-warning{% elif app.status == 'offer_issued' %}badge-info{% elif app.status == 'accepted' %}badge-success{% else %}badge-muted{% endif %}">
+                            {{ app.status|title }}
+                        </span>
+                        <span class="match-pill {% if app.match_score >= 70 %}match-high{% elif app.match_score >= 50 %}match-mid{% else %}match-low{% endif %}">{{ app.match_score }}%</span>
+                    </div>
+                </div>
+
+                <div class="sm-list-item-footer">
+                    <span class="sm-muted sm-small">Applied: {{ app.applied_at|date:"M d, Y" }}</span>
+                    <div class="sm-actions">
+                        {% if app.status == 'pending' %}
+                            <a href="{% url 'students:withdraw_application' app.id %}" class="sm-btn sm-btn-danger-outline sm-btn-sm" onclick="return confirm('Withdraw this application?')">Withdraw</a>
+                        {% elif app.status == 'offer_issued' %}
+                            <a href="{% url 'students:view_offer' app.id %}" class="sm-btn sm-btn-success sm-btn-sm">View Offer</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="sm-empty">
+                <p class="sm-empty-title">No applications yet</p>
+                <p class="sm-empty-text">Browse available internships and submit your first application.</p>
+                <a href="{% url 'students:browse_internships' %}" class="sm-btn sm-btn-primary">Browse Internships</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="sm-admin-layout">
+    <!-- Sidebar -->
+    <div class="sm-card">
+        <ul class="sm-admin-menu">
+            <li class="sm-admin-menu-title">Admin Menu</li>
+            <li><a href="{% url 'admin_panel:dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="active"{% endif %}>Dashboard</a></li>
+            <li><a href="{% url 'admin_panel:user_list' %}" {% if request.resolver_match.url_name == 'user_list' %}class="active"{% endif %}>Users</a></li>
+            <li><a href="{% url 'admin_panel:company_list' %}" {% if request.resolver_match.url_name == 'company_list' %}class="active"{% endif %}>Companies</a></li>
+            <li><a href="{% url 'admin_panel:internship_list' %}" {% if request.resolver_match.url_name == 'internship_list' %}class="active"{% endif %}>Listings</a></li>
+            <li><a href="{% url 'admin_panel:application_list' %}" {% if request.resolver_match.url_name == 'application_list' %}class="active"{% endif %}>Applications</a></li>
+            <li><a href="{% url 'admin_panel:skill_list' %}" {% if request.resolver_match.url_name == 'skill_list' %}class="active"{% endif %}>Skills</a></li>
+            <li><a href="{% url 'admin_panel:category_list' %}" {% if request.resolver_match.url_name == 'category_list' %}class="active"{% endif %}>Categories</a></li>
+            <li><a href="{% url 'admin_panel:journal_list' %}" {% if request.resolver_match.url_name == 'journal_list' %}class="active"{% endif %}>Journals</a></li>
+        </ul>
+    </div>
+
+    <!-- Main Content -->
+    <div>
+        {% block admin_content %}{% endblock %}
+    </div>
+</div>
+{% endblock %}

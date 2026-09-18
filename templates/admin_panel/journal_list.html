@@ -1,0 +1,38 @@
+{% extends 'admin_panel/base_admin.html' %}
+
+{% block title %}Student Journals - SkillMatch{% endblock %}
+
+{% block admin_content %}
+<div class="sm-section-header">
+    <h4 class="sm-section-title">Weekly Progress Journals</h4>
+</div>
+
+<div class="sm-table-wrap">
+    <table class="sm-table">
+        <thead>
+            <tr>
+                <th>Student</th>
+                <th>Internship</th>
+                <th>Week</th>
+                <th>Date</th>
+                <th>Hours</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in entries %}
+            <tr>
+                <td>{{ entry.student.email }}</td>
+                <td>{{ entry.application.internship.title|truncatechars:20 }}</td>
+                <td>{{ entry.week_number }}</td>
+                <td>{{ entry.entry_date }}</td>
+                <td>{{ entry.hours_worked }}</td>
+                <td>{{ entry.description|truncatechars:40 }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="sm-empty-cell">No journal entries yet</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

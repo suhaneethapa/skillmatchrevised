@@ -1,0 +1,54 @@
+{% extends 'admin_panel/base_admin.html' %}
+
+{% block title %}Manage Listings - SkillMatch{% endblock %}
+
+{% block admin_content %}
+<div class="sm-section-header">
+    <h4 class="sm-section-title">All Internship Listings</h4>
+    <div class="sm-btn-group">
+        <a href="?status=pending" class="sm-btn sm-btn-outline sm-btn-sm {% if status_filter == 'pending' %}sm-active{% endif %}">Pending</a>
+        <a href="?status=approved" class="sm-btn sm-btn-outline sm-btn-sm {% if status_filter == 'approved' %}sm-active{% endif %}">Approved</a>
+        <a href="?status=closed" class="sm-btn sm-btn-outline sm-btn-sm {% if status_filter == 'closed' %}sm-active{% endif %}">Closed</a>
+        <a href="{% url 'admin_panel:internship_list' %}" class="sm-btn sm-btn-outline sm-btn-sm {% if not status_filter %}sm-active{% endif %}">All</a>
+    </div>
+</div>
+
+<div class="sm-table-wrap">
+    <table class="sm-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Company</th>
+                <th>Category</th>
+                <th>Status</th>
+                <th>Positions</th>
+                <th>Deadline</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for i in internships %}
+            <tr>
+                <td>{{ i.id }}</td>
+                <td>{{ i.title }}</td>
+                <td>{{ i.company.organization_name }}</td>
+                <td>{{ i.category.name }}</td>
+                <td><span class="badge {% if i.status == 'approved' %}badge-success{% elif i.status == 'pending' %}badge-warning{% elif i.status == 'rejected' %}badge-danger{% else %}badge-muted{% endif %}">{{ i.status|title }}</span></td>
+                <td>{{ i.total_positions }}</td>
+                <td>{{ i.deadline }}</td>
+                <td>
+                    {% if i.status == 'pending' %}
+                    <a href="{% url 'admin_panel:approve_internship' i.id %}" class="sm-btn sm-btn-success sm-btn-sm">Approve</a>
+                    {% elif i.status == 'approved' %}
+                    <a href="{% url 'admin_panel:approve_internship' i.id %}" class="sm-btn sm-btn-danger-outline sm-btn-sm">Reject</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" class="sm-empty-cell">No listings found</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

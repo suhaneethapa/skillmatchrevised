@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block title %}My Listings - SkillMatch{% endblock %}
+
+{% block content %}
+<div class="internship-page">
+    <!-- Page Header -->
+    <div class="sm-page-header">
+        <h4 class="sm-page-title">My Listings</h4>
+        <a href="{% url 'companies:create_listing' %}" class="sm-btn sm-btn-primary sm-btn-sm">+ Post New</a>
+    </div>
+
+    {% include 'companies/_listing_cards.html' %}
+</div>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}View Offer - SkillMatch{% endblock %}
+
+{% block content %}
+<div class="sm-medium">
+    <div class="sm-card sm-card-pad">
+        <h4 style="margin-bottom: 14px;">Offer Letter Received</h4>
+        <dl class="sm-dl" style="margin-bottom: 18px;">
+            <div class="sm-dl-row"><dt>From</dt><dd>{{ application.internship.company.organization_name }}</dd></div>
+            <div class="sm-dl-row"><dt>Position</dt><dd>{{ application.internship.title }}</dd></div>
+            <div class="sm-dl-row"><dt>Match Score</dt><dd><span class="match-pill {% if application.match_score >= 70 %}match-high{% elif application.match_score >= 50 %}match-mid{% else %}match-low{% endif %}">{{ application.match_score }}%</span></dd></div>
+        </dl>
+
+        {% if application.offer_letter %}
+            <div style="border: 1px solid var(--sm-border); border-radius: var(--sm-radius); padding: 16px; margin-bottom: 18px;">
+                <h6 style="font-size: 0.85rem; margin-bottom: 10px;">Offer Letter</h6>
+                <a href="{{ application.offer_letter.url }}" target="_blank" class="sm-btn sm-btn-outline sm-btn-sm">View Offer Letter PDF</a>
+            </div>
+        {% else %}
+            <div class="sm-alert sm-alert-warning" style="margin-bottom: 18px;">
+                <span>No offer letter uploaded yet. Contact the company for details.</span>
+            </div>
+        {% endif %}
+
+        <div class="sm-actions">
+            <a href="{% url 'students:accept_offer' application.id %}" class="sm-btn sm-btn-success" onclick="return confirm('Accept this offer? This will confirm your placement.')">Accept Offer</a>
+            <a href="{% url 'students:decline_offer' application.id %}" class="sm-btn sm-btn-danger-outline" onclick="return confirm('Decline this offer? This cannot be undone.')">Decline</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

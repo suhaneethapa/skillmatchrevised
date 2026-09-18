@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Skills - SkillMatch{% endblock %}
+
+{% block content %}
+<div class="sm-medium">
+    <div class="sm-card sm-card-pad">
+        <h4 style="margin-bottom: 6px;">Select Your Skills</h4>
+        <p style="color: var(--sm-text-muted); font-size: 0.86rem; margin-bottom: 8px;">
+            Select all skills you have. These are used to calculate your match score with internships.
+        </p>
+
+        <form method="post">
+            {% csrf_token %}
+            {% regroup all_skills by category as skill_groups %}
+            {% for group in skill_groups %}
+                <p class="sm-checkgroup-title">{{ group.grouper.name }}</p>
+                <div class="sm-check-grid" style="margin-bottom: 8px;">
+                    {% for skill in group.list %}
+                        <label class="sm-check" for="skill_{{ skill.id }}">
+                            <input type="checkbox" name="skills" value="{{ skill.id }}" id="skill_{{ skill.id }}" {% if skill.id in user_skill_ids %}checked{% endif %}>
+                            <span>{{ skill.name }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+
+            <div class="sm-actions" style="margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--sm-border);">
+                <button type="submit" class="sm-btn sm-btn-primary">Save Skills</button>
+                <a href="{% url 'students:profile' %}" class="sm-btn sm-btn-outline">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

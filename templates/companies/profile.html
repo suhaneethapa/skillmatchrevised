@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+
+{% block title %}Company Profile - SkillMatch{% endblock %}
+
+{% block content %}
+<div class="sm-split">
+    <div class="sm-card">
+        <div class="sm-card-header">
+            <h4>Company Profile</h4>
+            <a href="{% url 'companies:profile_edit' %}" class="sm-btn sm-btn-primary sm-btn-sm">Edit Profile</a>
+        </div>
+        <div class="sm-card-body">
+            <dl class="sm-dl">
+                <div class="sm-dl-row"><dt>Organization</dt><dd>{{ profile.organization_name }}</dd></div>
+                <div class="sm-dl-row"><dt>Contact</dt><dd>{{ profile.contact_person }}</dd></div>
+                <div class="sm-dl-row"><dt>Industry</dt><dd>{{ profile.industry }}</dd></div>
+                <div class="sm-dl-row"><dt>Location</dt><dd>{{ profile.hq_location|default:"Not set" }}</dd></div>
+                {% if profile.website_url %}
+                    <div class="sm-dl-row"><dt>Website</dt><dd><a href="{{ profile.website_url }}" target="_blank">{{ profile.website_url }}</a></dd></div>
+                {% endif %}
+                <div class="sm-dl-row"><dt>Email</dt><dd>{{ request.user.email }}</dd></div>
+                <div class="sm-dl-row">
+                    <dt>Status</dt>
+                    <dd>
+                        {% if profile.suspended %}
+                            <span class="badge badge-danger">Suspended</span>
+                        {% else %}
+                            <span class="badge badge-success">Active</span>
+                        {% endif %}
+                    </dd>
+                </div>
+            </dl>
+
+            {% if profile.description %}
+                <div style="margin-top: 16px;">
+                    <h6 style="font-size: 0.85rem; margin-bottom: 4px;">Description</h6>
+                    <p style="color: var(--sm-text-muted); margin-bottom: 0;">{{ profile.description }}</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div>
+        <div class="sm-card sm-card-pad" style="text-align: center; margin-bottom: 16px;">
+            {% if profile.logo %}
+                <img src="{{ profile.logo.url }}" alt="Logo" style="max-height: 90px; margin-bottom: 10px;">
+            {% else %}
+                <span class="sm-avatar sm-avatar-lg" style="margin-bottom: 10px;">{{ profile.organization_name|first|upper }}</span>
+            {% endif %}
+            <h6 style="margin-bottom: 6px;">{{ profile.organization_name }}</h6>
+            <span class="badge badge-primary">Company</span>
+        </div>
+        <div class="sm-stack">
+            <a href="{% url 'companies:create_listing' %}" class="sm-btn sm-btn-primary sm-btn-block">Post New Internship</a>
+            <a href="{% url 'companies:my_listings' %}" class="sm-btn sm-btn-outline sm-btn-block">My Listings</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

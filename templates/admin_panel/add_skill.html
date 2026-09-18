@@ -1,0 +1,31 @@
+{% extends 'admin_panel/base_admin.html' %}
+
+{% block title %}Add Skill - SkillMatch{% endblock %}
+
+{% block admin_content %}
+<div class="sm-section-header">
+    <h4 class="sm-section-title">Add New Skill</h4>
+</div>
+
+<div class="sm-card sm-card-pad" style="max-width: 520px;">
+    <form method="post">
+        {% csrf_token %}
+        <div class="sm-field">
+            <label for="name">Skill Name</label>
+            <input type="text" name="name" id="name" class="sm-input" required>
+        </div>
+        <div class="sm-field">
+            <label for="category">Category</label>
+            <select name="category" id="category" class="sm-select" required>
+                {% for cat in categories %}
+                    <option value="{{ cat.id }}">{{ cat.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="sm-actions">
+            <button type="submit" class="sm-btn sm-btn-primary">Add Skill</button>
+            <a href="{% url 'admin_panel:skill_list' %}" class="sm-btn sm-btn-outline">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

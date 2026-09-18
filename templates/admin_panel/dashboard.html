@@ -1,0 +1,186 @@
+{% extends 'admin_panel/base_admin.html' %}
+
+{% block title %}Admin Dashboard - SkillMatch{% endblock %}
+
+{% block admin_content %}
+<div class="sm-page-header">
+    <h4 class="sm-page-title">Admin Dashboard</h4>
+</div>
+
+<!-- Stats Cards -->
+<div class="sm-grid cols-6" style="margin-bottom: 20px;">
+    <div class="sm-card stat-card">
+        <div class="stat-number">{{ total_students }}</div>
+        <div class="stat-label">Students</div>
+    </div>
+    <div class="sm-card stat-card">
+        <div class="stat-number">{{ total_companies }}</div>
+        <div class="stat-label">Companies</div>
+    </div>
+    <div class="sm-card stat-card">
+        <div class="stat-number">{{ total_listings }}</div>
+        <div class="stat-label">Listings</div>
+    </div>
+    <div class="sm-card stat-card">
+        <div class="stat-number">{{ total_applications }}</div>
+        <div class="stat-label">Applications</div>
+    </div>
+    <div class="sm-card stat-card">
+        <div class="stat-number text-warning">{{ pending_internships }}</div>
+        <div class="stat-label">Pending</div>
+    </div>
+    <div class="sm-card stat-card">
+        <div class="stat-number text-success">{{ placement_rate }}%</div>
+        <div class="stat-label">Placement Rate</div>
+    </div>
+</div>
+
+<!-- Charts -->
+<div class="sm-grid cols-2" style="margin-bottom: 20px;">
+    <div class="sm-card sm-card-pad">
+        <h6 style="margin-bottom: 12px;">Monthly Application Volume</h6>
+        <canvas id="volumeChart" height="200"></canvas>
+    </div>
+    <div class="sm-card sm-card-pad">
+        <h6 style="margin-bottom: 12px;">Top Required Skills</h6>
+        <canvas id="skillsChart" height="200"></canvas>
+    </div>
+</div>
+
+<div class="sm-grid cols-2" style="margin-bottom: 20px;">
+    <div class="sm-card sm-card-pad">
+        <h6 style="margin-bottom: 12px;">Application Status Breakdown</h6>
+        <canvas id="statusChart" height="230"></canvas>
+    </div>
+    <div class="sm-card sm-card-pad">
+        <h6 style="margin-bottom: 12px;">Quick Actions</h6>
+        <div class="sm-stack">
+            <a href="{% url 'admin_panel:user_list' %}" class="sm-btn sm-btn-outline sm-btn-block">Manage Users</a>
+            <a href="{% url 'admin_panel:internship_list' %}" class="sm-btn sm-btn-outline sm-btn-block">Approve Listings</a>
+            <a href="{% url 'admin_panel:csv_export' 'students' %}" class="sm-btn sm-btn-outline sm-btn-block">Export Students CSV</a>
+            <a href="{% url 'admin_panel:csv_export' 'companies' %}" class="sm-btn sm-btn-outline sm-btn-block">Export Companies CSV</a>
+            <a href="{% url 'admin_panel:csv_export' 'listings' %}" class="sm-btn sm-btn-outline sm-btn-block">Export Listings CSV</a>
+            <a href="{% url 'admin_panel:csv_export' 'applications' %}" class="sm-btn sm-btn-outline sm-btn-block">Export Applications CSV</a>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="sm-grid cols-2">
+    <div class="sm-card">
+        <div class="sm-card-header"><h5>Recent Applications</h5></div>
+        <div class="sm-card-body flush">
+            <table class="sm-table">
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Internship</th>
+                        <th>Score</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app in recent_applications %}
+                    <tr>
+                        <td>{{ app.student.email }}</td>
+                        <td>{{ app.internship.title|truncatechars:20 }}</td>
+                        <td>{{ app.match_score }}%</td>
+                        <td>
+                            <span class="badge {% if app.status == 'pending' %}badge-warning{% elif app.status == 'accepted' %}badge-success{% else %}badge-muted{% endif %}">
+                                {{ app.status }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="sm-empty-cell">No applications yet</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="sm-card">
+        <div class="sm-card-header"><h5>Recent Users</h5></div>
+        <div class="sm-card-body flush">
+            <table class="sm-table">
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Joined</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in recent_users %}
+                    <tr>
+                        <td>{{ u.email }}</td>
+                        <td>{{ u.role|title }}</td>
+                        <td>
+                            <span class="badge {% if u.status == 'active' %}badge-success{% elif u.status == 'pending' %}badge-warning{% else %}badge-muted{% endif %}">
+                                {{ u.status }}
+                            </span>
+                        </td>
+                        <td>{{ u.date_joined|date:"M d" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="sm-empty-cell">No users yet</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+const months = {{ months|safe }};
+const volumeData = {{ application_volume|safe }};
+const skillLabels = {{ top_skills|safe }};
+const skillData = {{ skill_counts|safe }};
+const statusLabels = {{ status_labels|safe }};
+const statusData = {{ status_data|safe }};
+
+new Chart(document.getElementById('volumeChart'), {
+    type: 'line',
+    data: {
+        labels: months,
+        datasets: [{
+            label: 'Applications',
+            data: volumeData,
+            borderColor: '#4f46e5',
+            backgroundColor: 'rgba(79, 70, 229, 0.08)',
+            fill: true,
+            tension: 0.4
+        }]
+    },
+    options: { responsive: true, plugins: { legend: { display: false } } }
+});
+
+new Chart(document.getElementById('skillsChart'), {
+    type: 'bar',
+    data: {
+        labels: skillLabels,
+        datasets: [{
+            label: 'Demand',
+            data: skillData,
+            backgroundColor: '#4f46e5'
+        }]
+    },
+    options: { responsive: true, plugins: { legend: { display: false } } }
+});
+
+new Chart(document.getElementById('statusChart'), {
+    type: 'doughnut',
+    data: {
+        labels: statusLabels,
+        datasets: [{
+            data: statusData,
+            backgroundColor: ['#b45309', '#1d4ed8', '#15803d', '#b91c1c', '#6b7280']
+        }]
+    },
+    options: { responsive: true }
+});
+</script>
+{% endblock %}
+{% endblock %}

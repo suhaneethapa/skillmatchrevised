@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}My Profile - SkillMatch{% endblock %}
+
+{% block content %}
+<div class="sm-medium">
+    <div class="sm-card" style="margin-bottom: 20px;">
+        <div class="sm-card-header">
+            <h4>My Profile</h4>
+            <a href="{% url 'students:profile_edit' %}" class="sm-btn sm-btn-primary sm-btn-sm">Edit Profile</a>
+        </div>
+        <div class="sm-card-body">
+            <dl class="sm-dl">
+                <div class="sm-dl-row"><dt>Email</dt><dd>{{ request.user.email }}</dd></div>
+                <div class="sm-dl-row"><dt>College</dt><dd>{{ profile.college.name|default:"Not set" }}</dd></div>
+                <div class="sm-dl-row"><dt>Department</dt><dd>{{ profile.department|default:"Not set" }}</dd></div>
+                <div class="sm-dl-row"><dt>Semester</dt><dd>{{ profile.semester|default:"Not set" }}</dd></div>
+                {% if profile.github_url %}
+                    <div class="sm-dl-row"><dt>GitHub</dt><dd><a href="{{ profile.github_url }}" target="_blank">{{ profile.github_url }}</a></dd></div>
+                {% endif %}
+                {% if profile.linkedin_url %}
+                    <div class="sm-dl-row"><dt>LinkedIn</dt><dd><a href="{{ profile.linkedin_url }}" target="_blank">{{ profile.linkedin_url }}</a></dd></div>
+                {% endif %}
+            </dl>
+
+            {% if profile.bio %}
+                <div style="margin-top: 16px;">
+                    <h6 style="font-size: 0.85rem; margin-bottom: 4px;">Bio</h6>
+                    <p style="color: var(--sm-text-muted); margin-bottom: 0;">{{ profile.bio }}</p>
+                </div>
+            {% endif %}
+
+            <div style="margin-top: 16px;">
+                {% if profile.cv_file %}
+                    <div class="sm-alert sm-alert-success">
+                        <span>CV uploaded</span>
+                        <a href="{{ profile.cv_file.url }}" target="_blank" class="sm-btn sm-btn-outline sm-btn-sm">View CV</a>
+                    </div>
+                {% else %}
+                    <div class="sm-alert sm-alert-warning">
+                        <span>No CV uploaded. <a href="{% url 'students:profile_edit' %}">Upload now</a></span>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="sm-card">
+        <div class="sm-card-header">
+            <h5>My Skills</h5>
+            <a href="{% url 'students:skills_edit' %}" class="sm-btn sm-btn-outline sm-btn-sm">Edit Skills</a>
+        </div>
+        <div class="sm-card-body">
+            {% if skills %}
+                <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                    {% for ss in skills %}
+                        <span class="skill-tag req">{{ ss.skill.name }}</span>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p style="color: var(--sm-text-muted); margin: 0;">No skills added yet. <a href="{% url 'students:skills_edit' %}">Add skills</a></p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

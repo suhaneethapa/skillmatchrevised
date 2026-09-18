@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Profile - SkillMatch{% endblock %}
+
+{% block content %}
+<div class="sm-medium">
+    <div class="sm-card sm-card-pad">
+        <h4 style="margin-bottom: 18px;">Edit Profile</h4>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="sm-form-row">
+                <div class="sm-field">
+                    <label for="department">Department</label>
+                    <input type="text" name="department" id="department" class="sm-input" value="{{ profile.department }}" required>
+                </div>
+                <div class="sm-field">
+                    <label for="semester">Semester</label>
+                    <input type="number" name="semester" id="semester" class="sm-input" value="{{ profile.semester }}" min="1" max="8" required>
+                </div>
+            </div>
+            <div class="sm-field">
+                <label for="college">College</label>
+                <select name="college" id="college" class="sm-select" required>
+                    {% for college in colleges %}
+                        <option value="{{ college.id }}" {% if college.id == profile.college_id %}selected{% endif %}>{{ college.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="sm-field">
+                <label for="bio">Bio</label>
+                <textarea name="bio" id="bio" class="sm-textarea" rows="3">{{ profile.bio }}</textarea>
+            </div>
+            <div class="sm-form-row">
+                <div class="sm-field">
+                    <label for="github_url">GitHub URL</label>
+                    <input type="url" name="github_url" id="github_url" class="sm-input" value="{{ profile.github_url|default:'' }}">
+                </div>
+                <div class="sm-field">
+                    <label for="linkedin_url">LinkedIn URL</label>
+                    <input type="url" name="linkedin_url" id="linkedin_url" class="sm-input" value="{{ profile.linkedin_url|default:'' }}">
+                </div>
+            </div>
+            <div class="sm-field">
+                <label for="cv_file">CV Upload (PDF or DOCX, max 5MB)</label>
+                <input type="file" name="cv_file" id="cv_file" class="sm-input" accept=".pdf,.docx">
+                {% if profile.cv_file %}
+                    <p class="sm-help">Current: <a href="{{ profile.cv_file.url }}" target="_blank">{{ profile.cv_file.name }}</a></p>
+                {% endif %}
+            </div>
+            <div class="sm-actions">
+                <button type="submit" class="sm-btn sm-btn-primary">Save Changes</button>
+                <a href="{% url 'students:profile' %}" class="sm-btn sm-btn-outline">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

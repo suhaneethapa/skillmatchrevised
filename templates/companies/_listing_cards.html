@@ -1,0 +1,74 @@
+{# Shared internship card grid for the company dashboard and "My Listings" page. Expects: internships, today #}
+<div class="internship-grid">
+    {% for internship in internships %}
+    <div class="internship-card">
+        <!-- Title + Status -->
+        <div class="card-header-row">
+            <div style="min-width: 0;">
+                <div class="card-title-text">{{ internship.title }}</div>
+            </div>
+            <span class="badge {% if internship.status == 'approved' %}badge-success{% elif internship.status == 'closed' %}badge-muted{% else %}badge-warning{% endif %}">
+                {{ internship.status|title }}
+            </span>
+        </div>
+
+        <!-- Category -->
+        <div class="card-company">{{ internship.category.name }}</div>
+
+        <!-- Description (clamped to 2 lines) -->
+        <div class="card-desc">{{ internship.description }}</div>
+
+        <!-- Skills -->
+        <div class="skills-row">
+            {% for skill in internship.internship_skills.all %}
+                <span class="skill-tag {% if skill.is_required %}req{% else %}pref{% endif %}">
+                    {{ skill.skill.name }}
+                </span>
+            {% empty %}
+                <span style="font-size: 0.78rem; color: var(--sm-text-muted);">No skills specified</span>
+            {% endfor %}
+        </div>
+
+        <!-- Metadata -->
+        <div class="meta-row">
+            <span>Rs. {{ internship.stipend|default:"Unpaid" }}</span>
+            <span>{{ internship.location_type|title }}</span>
+            <span>{{ internship.expected_duration }}</span>
+            <span>{{ internship.applications.count }} applicant{{ internship.applications.count|pluralize }}</span>
+        </div>
+
+        <!-- Positions left -->
+        <div class="match-status {% if internship.remaining_positions > 0 %}matched{% else %}missing{% endif %}">
+            {% if internship.remaining_positions > 0 %}
+                {{ internship.remaining_positions }} of {{ internship.total_positions }} positions remaining
+            {% else %}
+                All positions filled
+            {% endif %}
+        </div>
+
+        <!-- Footer: Deadline + Actions -->
+        <div class="card-footer-row">
+            <span class="deadline-text {% if internship.deadline < today %}urgent{% endif %}">
+                {% if internship.deadline < today %}
+                    Expired {{ internship.deadline|timesince }} ago
+                {% else %}
+                    {{ internship.deadline|timeuntil }} left
+                {% endif %}
+            </span>
+
+            <div class="sm-actions">
+                <a href="{% url 'companies:view_applicants' internship.id %}" class="sm-btn sm-btn-primary sm-btn-sm">Applicants</a>
+                <a href="{% url 'companies:delete_listing' internship.id %}" class="sm-btn sm-btn-danger-outline sm-btn-sm">Delete</a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="internship-card" style="grid-column: 1 / -1;">
+        <div class="sm-empty">
+            <p class="sm-empty-title">No listings posted yet</p>
+            <p class="sm-empty-text">Create your first internship listing to start receiving applicants.</p>
+            <a href="{% url 'companies:create_listing' %}" class="sm-btn sm-btn-primary">Post Internship</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>

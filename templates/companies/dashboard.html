@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block title %}Company Dashboard - SkillMatch{% endblock %}
+
+{% block content %}
+<div class="internship-page">
+    <!-- Page Header -->
+    <div class="sm-page-header">
+        <h4 class="sm-page-title">{{ profile.organization_name }}</h4>
+        <div class="sm-actions">
+            <a href="{% url 'companies:profile' %}" class="sm-btn sm-btn-outline sm-btn-sm">Profile</a>
+            <a href="{% url 'companies:create_listing' %}" class="sm-btn sm-btn-primary sm-btn-sm">+ Post Internship</a>
+        </div>
+    </div>
+
+    {% include 'companies/_listing_cards.html' %}
+</div>
+{% endblock %}

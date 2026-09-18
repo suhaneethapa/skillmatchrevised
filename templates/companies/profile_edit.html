@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Company Profile - SkillMatch{% endblock %}
+
+{% block content %}
+<div class="sm-medium">
+    <div class="sm-card sm-card-pad">
+        <h4 style="margin-bottom: 18px;">Edit Company Profile</h4>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="sm-form-row">
+                <div class="sm-field">
+                    <label for="organization_name">Organization Name</label>
+                    <input type="text" name="organization_name" id="organization_name" class="sm-input" value="{{ profile.organization_name }}">
+                </div>
+                <div class="sm-field">
+                    <label for="contact_person">Contact Person</label>
+                    <input type="text" name="contact_person" id="contact_person" class="sm-input" value="{{ profile.contact_person }}">
+                </div>
+            </div>
+            <div class="sm-field">
+                <label for="industry">Industry</label>
+                <input type="text" name="industry" id="industry" class="sm-input" value="{{ profile.industry }}">
+            </div>
+            <div class="sm-field">
+                <label for="description">Description</label>
+                <textarea name="description" id="description" class="sm-textarea" rows="4">{{ profile.description }}</textarea>
+            </div>
+            <div class="sm-form-row">
+                <div class="sm-field">
+                    <label for="hq_location">HQ Location</label>
+                    <input type="text" name="hq_location" id="hq_location" class="sm-input" value="{{ profile.hq_location }}">
+                </div>
+                <div class="sm-field">
+                    <label for="website_url">Website URL</label>
+                    <input type="url" name="website_url" id="website_url" class="sm-input" value="{{ profile.website_url|default:'' }}">
+                </div>
+            </div>
+            <div class="sm-field">
+                <label for="logo">Logo</label>
+                <input type="file" name="logo" id="logo" class="sm-input" accept="image/*">
+                {% if profile.logo %}
+                    <p class="sm-help"><img src="{{ profile.logo.url }}" alt="Logo" style="max-height: 50px; margin-top: 6px;"></p>
+                {% endif %}
+            </div>
+            <div class="sm-actions">
+                <button type="submit" class="sm-btn sm-btn-primary">Save Changes</button>
+                <a href="{% url 'companies:profile' %}" class="sm-btn sm-btn-outline">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
