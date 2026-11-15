@@ -21,7 +21,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me-in-production")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "True") == "True"
 
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver").split(",")
 
 
 # ─── APPLICATION DEFINITION ──────────────────────────────────────────
@@ -49,6 +49,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "core.middleware.AccountStatusMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "core.middleware.NoCacheMiddleware",  # <-- ADD THIS LINE
 ]
@@ -115,6 +116,10 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
+
+# PRD AC-2.1: Password reset link valid for 24 hours (in seconds)
+PASSWORD_RESET_TIMEOUT = 86400
+
 
 
 # ─── INTERNATIONALIZATION ────────────────────────────────────────────

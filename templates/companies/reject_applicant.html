@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block title %}Reject Applicant - SkillMatch{% endblock %}
+
+{% block content %}
+<div class="sm-narrow">
+    <div class="sm-card sm-card-pad">
+        <h4 style="margin-bottom: 8px;">Reject Applicant</h4>
+        <p class="sm-muted sm-small" style="margin-bottom: 20px;">
+            Specify a structured rejection reason for this candidate. The student will be informed of this reason on their dashboard and via email.
+        </p>
+
+        <!-- Candidate Details -->
+        <div style="background: var(--sm-bg); border: 1px solid var(--sm-border); border-radius: var(--sm-radius-sm); padding: 14px; margin-bottom: 20px;">
+            <div style="font-weight: 600; font-size: 0.95rem; margin-bottom: 4px;">{{ application.student.email }}</div>
+            <div class="sm-muted sm-small">
+                Position: <strong>{{ application.internship.title }}</strong> &middot;
+                Match Score: <strong>{{ application.match_score }}%</strong> &middot;
+                Applied: {{ application.applied_at|date:"M d, Y" }}
+            </div>
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="sm-field">
+                <label for="rejection_reason" style="font-weight: 600;">Rejection Reason <span style="color: var(--sm-danger);">*</span></label>
+                <select name="rejection_reason" id="rejection_reason" class="sm-input" required>
+                    <option value="">-- Select a reason --</option>
+                    {% for key, label in rejection_reasons %}
+                        <option value="{{ key }}" {% if selected_reason == key %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="sm-field">
+                <label for="feedback" style="font-weight: 600;">Additional Feedback <span class="sm-muted sm-small">(Optional)</span></label>
+                <textarea name="feedback" id="feedback" class="sm-input" rows="4" placeholder="Provide constructive academic feedback or additional context for the candidate...">{{ feedback }}</textarea>
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
+                <button type="submit" class="sm-btn sm-btn-danger" style="flex: 1;">Reject Applicant</button>
+                <a href="{% url 'companies:view_applicants' application.internship.id %}" class="sm-btn sm-btn-outline" style="text-align: center;">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+

@@ -55,18 +55,33 @@
                         <p class="sm-muted sm-small" style="margin: 0;">{{ app.internship.company.organization_name }}</p>
                     </div>
                     <div class="sm-flex-center">
-                        <span class="badge {% if app.status == 'pending' %}badge-warning{% elif app.status == 'offer_issued' %}badge-info{% elif app.status == 'accepted' %}badge-success{% else %}badge-muted{% endif %}">
+                        <span class="badge {% if app.status == 'pending' %}badge-warning{% elif app.status == 'offer_issued' %}badge-info{% elif app.status == 'accepted' %}badge-success{% elif app.status == 'rejected' %}badge-danger{% else %}badge-muted{% endif %}">
                             {{ app.status|title }}
                         </span>
                         <span class="match-pill {% if app.match_score >= 70 %}match-high{% elif app.match_score >= 50 %}match-mid{% else %}match-low{% endif %}">{{ app.match_score }}%</span>
+                        {% if app.is_below_threshold %}
+                            <span class="badge badge-danger">Below threshold &mdash; skills updated</span>
+                        {% endif %}
                     </div>
                 </div>
+
+                {% if app.status == 'rejected' and app.rejection_reason %}
+                <div style="margin-top: 8px; padding: 6px 10px; background: var(--sm-danger-bg); border-radius: var(--sm-radius-sm); font-size: 0.82rem; color: var(--sm-danger);">
+                    <strong>Rejection Reason:</strong> {{ app.rejection_reason }}
+                    {% if app.rejection_feedback %}
+                        &middot; <em>Feedback: {{ app.rejection_feedback }}</em>
+                    {% endif %}
+                </div>
+                {% endif %}
 
                 <div class="sm-list-item-footer">
                     <span class="sm-muted sm-small">Applied: {{ app.applied_at|date:"M d, Y" }}</span>
                     <div class="sm-actions">
                         {% if app.status == 'pending' %}
-                            <a href="{% url 'students:withdraw_application' app.id %}" class="sm-btn sm-btn-danger-outline sm-btn-sm" onclick="return confirm('Withdraw this application?')">Withdraw</a>
+                            <form method="post" action="{% url 'students:withdraw_application' app.id %}" style="display: inline;" onsubmit="return confirm('Withdraw this application?');">
+                                {% csrf_token %}
+                                <button type="submit" class="sm-btn sm-btn-danger-outline sm-btn-sm">Withdraw</button>
+                            </form>
                         {% elif app.status == 'offer_issued' %}
                             <a href="{% url 'students:view_offer' app.id %}" class="sm-btn sm-btn-success sm-btn-sm">View Offer</a>
                         {% endif %}

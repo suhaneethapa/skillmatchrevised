@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ internship.title }} - SkillMatch{% endblock %}
+
+{% block content %}
+<div class="sm-page">
+    <div style="margin-bottom: 16px;">
+        <a href="{% url 'students:browse_internships' %}" class="sm-btn sm-btn-outline sm-btn-sm">&larr; Back to Listings</a>
+    </div>
+
+    <!-- Header Card -->
+    <div class="sm-card sm-card-pad" style="margin-bottom: 24px;">
+        <div class="sm-flex-between" style="align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+            <div>
+                <h3 style="margin-bottom: 6px;">{{ internship.title }}</h3>
+                <p class="sm-muted" style="margin: 0; font-size: 1rem;">
+                    <strong>{{ internship.company.organization_name }}</strong> &middot;
+                    <span class="badge badge-muted">{{ internship.category.name }}</span>
+                </p>
+            </div>
+            <div style="text-align: right;">
+                {% if is_student and score is not None %}
+                    <span class="match-pill {% if score >= 70 %}match-high{% elif score >= 50 %}match-mid{% else %}match-low{% endif %}" style="font-size: 1.1rem; padding: 6px 14px;">
+                        {{ score }}% Match
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="sm-split">
+        <!-- Main Details Column -->
+        <div>
+            <!-- Description -->
+            <div class="sm-card sm-card-pad" style="margin-bottom: 20px;">
+                <h5 style="margin-bottom: 12px;">About the Internship</h5>
+                <div style="white-space: pre-line; color: var(--sm-text); line-height: 1.6;">
+                    {{ internship.description }}
+                </div>
+            </div>
+
+            <!-- Skills Required & Preferred -->
+            <div class="sm-card sm-card-pad" style="margin-bottom: 20px;">
+                <h5 style="margin-bottom: 14px;">Skills & Competencies</h5>
+
+                <div style="margin-bottom: 16px;">
+                    <div style="font-weight: 600; font-size: 0.88rem; color: var(--sm-text-muted); margin-bottom: 8px;">
+                        REQUIRED SKILLS (WEIGHT 2.0)
+                    </div>
+                    <div class="skills-row">
+                        {% for skill in required_skills %}
+                            <span class="skill-tag req" style="font-size: 0.85rem; padding: 4px 10px;">
+                                {{ skill }}
+                                {% if is_student %}
+                                    {% if skill in matched_required %}&check;{% else %}&times;{% endif %}
+                                {% endif %}
+                            </span>
+                        {% empty %}
+                            <span class="sm-muted sm-small">None specified</span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div>
+                    <div style="font-weight: 600; font-size: 0.88rem; color: var(--sm-text-muted); margin-bottom: 8px;">
+                        PREFERRED SKILLS (WEIGHT 1.0)
+                    </div>
+                    <div class="skills-row">
+                        {% for skill in preferred_skills %}
+                            <span class="skill-tag pref" style="font-size: 0.85rem; padding: 4px 10px;">
+                                {{ skill }}
+                                {% if is_student and skill in matched_preferred %}&check;{% endif %}
+                            </span>
+                        {% empty %}
+                            <span class="sm-muted sm-small">None specified</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Company Overview -->
+            <div class="sm-card sm-card-pad">
+                <h5 style="margin-bottom: 12px;">About {{ internship.company.organization_name }}</h5>
+                <p style="margin-bottom: 12px; line-height: 1.5;">{{ internship.company.description }}</p>
+                <div class="sm-grid cols-2" style="font-size: 0.88rem;">
+                    <div><strong>Industry:</strong> {{ internship.company.industry }}</div>
+                    <div><strong>HQ Location:</strong> {{ internship.company.hq_location|default:"Not specified" }}</div>
+                    {% if internship.company.website_url %}
+                        <div><strong>Website:</strong> <a href="{{ internship.company.website_url }}" target="_blank" rel="noopener">{{ internship.company.website_url }}</a></div>
+                    {% endif %}
+                    <div><strong>Contact Person:</strong> {{ internship.company.contact_person }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar / Action Column -->
+        <div>
+            <!-- Summary Info -->
+            <div class="sm-card sm-card-pad" style="margin-bottom: 20px;">
+                <h5 style="margin-bottom: 14px;">Internship Overview</h5>
+                <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.9rem;">
+                    <div class="sm-flex-between">
+                        <span class="sm-muted">Stipend:</span>
+                        <strong>{% if internship.stipend %}Rs. {{ internship.stipend }}/mo{% else %}Unpaid{% endif %}</strong>
+                    </div>
+                    <div class="sm-flex-between">
+                        <span class="sm-muted">Location Mode:</span>
+                        <strong>{{ internship.location_type|title }}</strong>
+                    </div>
+                    <div class="sm-flex-between">
+                        <span class="sm-muted">Duration:</span>
+                        <strong>{{ internship.expected_duration }}</strong>
+                    </div>
+                    <div class="sm-flex-between">
+                        <span class="sm-muted">Total Slots:</span>
+                        <strong>{{ internship.total_positions }}</strong>
+                    </div>
+                    <div class="sm-flex-between">
+                        <span class="sm-muted">Remaining Slots:</span>
+                        <strong>{{ internship.remaining_positions }} of {{ internship.total_positions }}</strong>
+                    </div>
+                    <div class="sm-flex-between">
+                        <span class="sm-muted">Deadline:</span>
+                        <strong class="{% if internship.deadline < today %}urgent{% endif %}">
+                            {{ internship.deadline|date:"M d, Y" }}
+                            {% if internship.deadline < today %}
+                                (Expired)
+                            {% else %}
+                                ({{ internship.deadline|timeuntil }} left)
+                            {% endif %}
+                        </strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Application Action Card -->
+            <div class="sm-card sm-card-pad">
+                <h5 style="margin-bottom: 12px;">Apply for this Role</h5>
+
+                {% if internship.deadline < today %}
+                    <div class="sm-alert sm-alert-warning" style="margin-bottom: 0;">
+                        <span>This internship listing has closed because the application deadline has passed.</span>
+                    </div>
+                {% elif already_applied %}
+                    <div class="sm-alert sm-alert-info" style="margin-bottom: 12px;">
+                        <span>You applied on {{ already_applied.applied_at|date:"M d, Y" }}.</span>
+                    </div>
+                    {% if already_applied.is_below_threshold %}
+                    <div class="sm-alert sm-alert-danger" style="margin-bottom: 12px;">
+                        <span><strong>Below threshold &mdash; skills updated.</strong> Your match is now {{ score }}%.</span>
+                    </div>
+                    {% endif %}
+                    <div class="sm-flex-between" style="align-items: center;">
+                        <span class="badge {% if already_applied.status == 'pending' %}badge-warning{% elif already_applied.status == 'offer_issued' %}badge-info{% elif already_applied.status == 'accepted' %}badge-success{% elif already_applied.status == 'rejected' %}badge-danger{% else %}badge-muted{% endif %}">
+                            Status: {{ already_applied.status|title }}
+                        </span>
+                        <a href="{% url 'students:dashboard' %}" class="sm-btn sm-btn-outline sm-btn-sm">View in Dashboard</a>
+                    </div>
+                {% elif not request.user.is_authenticated %}
+                    <p class="sm-muted sm-small" style="margin-bottom: 16px;">
+                        Log in or register an account to evaluate your skill compatibility and submit an application.
+                    </p>
+                    <a href="{% url 'students:apply_internship' internship.id %}" class="sm-btn sm-btn-primary sm-btn-block" style="text-align: center;">
+                        Apply Now
+                    </a>
+                {% elif not is_student %}
+                    <p class="sm-muted sm-small" style="margin-bottom: 0;">
+                        You are currently logged in with a {{ request.user.role }} account. Only students are eligible to apply.
+                    </p>
+                {% elif request.user.status != 'active' %}
+                    <div class="sm-alert sm-alert-warning" style="margin-bottom: 12px;">
+                        <span>Your account is awaiting approval from the administrator.</span>
+                    </div>
+                {% elif not has_cv %}
+                    <div class="sm-alert sm-alert-warning" style="margin-bottom: 14px;">
+                        <span>You must upload your CV before submitting applications.</span>
+                    </div>
+                    <a href="{% url 'students:profile_edit' %}" class="sm-btn sm-btn-outline sm-btn-block" style="text-align: center;">Upload CV</a>
+                {% elif not eligible %}
+                    <div class="sm-alert sm-alert-warning" style="margin-bottom: 12px;">
+                        <span>Your match score is <strong>{{ score }}%</strong>. A minimum of 50% is required to apply.</span>
+                    </div>
+                    {% if gap %}
+                        <p class="sm-muted sm-small" style="margin-bottom: 12px;">
+                            <strong>Missing Required Skills:</strong> {{ gap|join:", " }}
+                        </p>
+                    {% endif %}
+                    <a href="{% url 'students:skills_edit' %}" class="sm-btn sm-btn-outline sm-btn-block" style="text-align: center;">Update My Skills</a>
+                {% else %}
+                    <!-- Eligible Student Application Form -->
+                    <form method="post" action="{% url 'students:apply_internship' internship.id %}">
+                        {% csrf_token %}
+                        <div class="sm-field">
+                            <label for="cover_letter" style="font-weight: 600;">Cover Letter <span class="sm-muted sm-small">(Optional)</span></label>
+                            <textarea name="cover_letter" id="cover_letter" class="sm-input" rows="4" placeholder="Briefly introduce yourself and why you're a strong fit for this internship..."></textarea>
+                        </div>
+                        <button type="submit" class="sm-btn sm-btn-primary sm-btn-block">Submit Application</button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

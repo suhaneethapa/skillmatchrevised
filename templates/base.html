@@ -37,6 +37,7 @@
                     {% endif %}
                     <li><a href="{% url 'accounts:logout' %}">Logout</a></li>
                 {% else %}
+                    <li><a href="{% url 'students:browse_internships' %}" {% if ns == 'students' and url_name == 'browse_internships' %}class="active"{% endif %}>Browse</a></li>
                     <li><a href="{% url 'accounts:login' %}" {% if ns == 'accounts' and url_name == 'login' %}class="active"{% endif %}>Login</a></li>
                     <li><a href="{% url 'accounts:register' %}" {% if ns == 'accounts' and url_name == 'register' %}class="active"{% endif %}>Register</a></li>
                 {% endif %}

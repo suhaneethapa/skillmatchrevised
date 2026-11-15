@@ -58,6 +58,7 @@
 
             <div class="sm-actions">
                 <a href="{% url 'companies:view_applicants' internship.id %}" class="sm-btn sm-btn-primary sm-btn-sm">Applicants</a>
+                <a href="{% url 'companies:edit_listing' internship.id %}" class="sm-btn sm-btn-outline sm-btn-sm">Edit</a>
                 <a href="{% url 'companies:delete_listing' internship.id %}" class="sm-btn sm-btn-danger-outline sm-btn-sm">Delete</a>
             </div>
         </div>

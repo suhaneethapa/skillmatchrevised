@@ -35,6 +35,11 @@
                                 {% else %}match-low{% endif %}">
                                 {{ app.match_score }}%
                             </span>
+                            {% if app.is_below_threshold %}
+                                <div style="margin-top: 5px;">
+                                    <span class="badge badge-danger">Below threshold &mdash; skills updated</span>
+                                </div>
+                            {% endif %}
                         </td>
                         <td>
                             {% if app.status == 'pending' %}
@@ -45,6 +50,11 @@
                                 <span class="badge badge-success">Accepted</span>
                             {% elif app.status == 'rejected' %}
                                 <span class="badge badge-danger">Rejected</span>
+                                {% if app.rejection_reason %}
+                                    <div style="font-size: 0.75rem; color: var(--sm-text-muted); margin-top: 3px;">
+                                        {{ app.rejection_reason }}
+                                    </div>
+                                {% endif %}
                             {% endif %}
                         </td>
                         <td style="color: var(--sm-text-muted);">{{ app.applied_at|date:"M d, Y" }}</td>
@@ -56,8 +66,15 @@
                             {% endif %}
                         </td>
                         <td>
-                            {% if app.status == 'pending' %}
-                                <a href="{% url 'companies:issue_offer' app.id %}" class="sm-btn sm-btn-success sm-btn-sm">Issue Offer</a>
+                            {% if app.status == 'pending' or app.status == 'offer_issued' %}
+                                <div class="sm-actions">
+                                    {% if app.status == 'pending' %}
+                                        <a href="{% url 'companies:issue_offer' app.id %}" class="sm-btn sm-btn-success sm-btn-sm">Issue Offer</a>
+                                    {% endif %}
+                                    <a href="{% url 'companies:reject_applicant' app.id %}" class="sm-btn sm-btn-danger-outline sm-btn-sm">Reject</a>
+                                </div>
+                            {% else %}
+                                <span class="sm-muted sm-small">&mdash;</span>
                             {% endif %}
                         </td>
                     </tr>

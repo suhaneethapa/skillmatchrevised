@@ -20,8 +20,19 @@
                 <span class="match-pill {% if app.match_score >= 70 %}match-high{% elif app.match_score >= 50 %}match-mid{% else %}match-low{% endif %}">Match: {{ app.match_score }}%</span>
             </div>
             <p class="sm-muted sm-small" style="margin-bottom: 12px;">Applied: {{ app.applied_at|date:"M d, Y" }}</p>
+            {% if app.status == 'rejected' and app.rejection_reason %}
+                <div style="margin-bottom: 12px; padding: 6px 10px; background: var(--sm-danger-bg); border-radius: var(--sm-radius-sm); font-size: 0.82rem; color: var(--sm-danger);">
+                    <strong>Reason:</strong> {{ app.rejection_reason }}
+                    {% if app.rejection_feedback %}
+                        &middot; <em>Feedback: {{ app.rejection_feedback }}</em>
+                    {% endif %}
+                </div>
+            {% endif %}
             {% if app.status == 'pending' %}
-                <a href="{% url 'students:withdraw_application' app.id %}" class="sm-btn sm-btn-danger-outline sm-btn-sm" onclick="return confirm('Withdraw this application?')">Withdraw</a>
+                <form method="post" action="{% url 'students:withdraw_application' app.id %}" style="display: inline;" onsubmit="return confirm('Withdraw this application?');">
+                    {% csrf_token %}
+                    <button type="submit" class="sm-btn sm-btn-danger-outline sm-btn-sm">Withdraw</button>
+                </form>
             {% elif app.status == 'offer_issued' %}
                 <a href="{% url 'students:view_offer' app.id %}" class="sm-btn sm-btn-success sm-btn-sm">View Offer</a>
             {% endif %}

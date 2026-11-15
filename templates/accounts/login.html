@@ -13,18 +13,22 @@
         {% endif %}
         <form method="post">
             {% csrf_token %}
+            {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
             <div class="sm-field">
                 <label for="email">Email</label>
                 <input type="email" name="email" id="email" class="sm-input" required>
             </div>
             <div class="sm-field">
-                <label for="password">Password</label>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <label for="password" style="margin-bottom: 0;">Password</label>
+                    <a href="{% url 'accounts:password_reset' %}" style="font-size: 0.82rem;">Forgot password?</a>
+                </div>
                 <input type="password" name="password" id="password" class="sm-input" required>
             </div>
             <button type="submit" class="sm-btn sm-btn-primary sm-btn-block">Login</button>
         </form>
         <p style="text-align: center; margin: 16px 0 0; font-size: 0.88rem;">
-            <a href="{% url 'accounts:register' %}">Don't have an account? Register</a>
+            <a href="{% url 'accounts:register' %}{% if next %}?next={{ next|urlencode }}{% endif %}">Don't have an account? Register</a>
         </p>
     </div>
 </div>

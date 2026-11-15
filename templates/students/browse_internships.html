@@ -10,7 +10,7 @@
         <span class="sm-page-sub">{{ listings|length }} listing{{ listings|pluralize }}</span>
     </div>
 
-    {% if not request.user.student_profile.cv_file %}
+    {% if is_student and not has_cv %}
     <div class="sm-alert sm-alert-warning" style="margin-bottom: 16px;">
         <span>You have not uploaded a CV. <a href="{% url 'students:profile_edit' %}">Upload your CV</a> to apply for internships.</span>
     </div>
@@ -23,11 +23,15 @@
             <!-- Title + Match -->
             <div class="card-header-row">
                 <div style="min-width: 0;">
-                    <div class="card-title-text">{{ item.internship.title }}</div>
+                    <a href="{% url 'students:internship_detail' item.internship.id %}" class="card-title-text" style="color: inherit; text-decoration: none;">
+                        {{ item.internship.title }}
+                    </a>
                 </div>
+                {% if item.score is not None %}
                 <span class="match-pill {% if item.score >= 70 %}match-high{% elif item.score >= 50 %}match-mid{% else %}match-low{% endif %}">
                     {{ item.score }}%
                 </span>
+                {% endif %}
             </div>
 
             <!-- Company -->
@@ -61,6 +65,7 @@
             </div>
 
             <!-- Match Status -->
+            {% if is_student %}
             <div class="match-status {% if item.gap %}missing{% else %}matched{% endif %}">
                 {% if item.gap %}
                     Missing: {{ item.gap|join:", " }}
@@ -68,6 +73,7 @@
                     &check; All required skills matched
                 {% endif %}
             </div>
+            {% endif %}
 
             <!-- Footer: Deadline + Action -->
             <div class="card-footer-row">
@@ -82,15 +88,26 @@
                 <div>
                     {% if item.internship.deadline < today %}
                         <span class="badge badge-muted">Closed</span>
-                    {% elif not request.user.student_profile.cv_file %}
-                        <a href="{% url 'students:profile_edit' %}" class="sm-btn sm-btn-outline sm-btn-sm">Upload CV to Apply</a>
-                    {% elif item.eligible %}
-                        <form method="post" action="{% url 'students:apply_internship' item.internship.id %}" style="display: inline;">
-                            {% csrf_token %}
-                            <button type="submit" class="sm-btn sm-btn-primary sm-btn-sm">Apply</button>
-                        </form>
+                    {% elif not request.user.is_authenticated %}
+                        <a href="{% url 'students:apply_internship' item.internship.id %}" class="sm-btn sm-btn-primary sm-btn-sm">Apply</a>
+                    {% elif is_student %}
+                        {% if item.already_applied %}
+                            <span class="badge badge-info">Applied</span>
+                            {% if item.already_applied.is_below_threshold %}
+                                <span class="badge badge-danger">Below threshold &mdash; skills updated</span>
+                            {% endif %}
+                        {% elif not has_cv %}
+                            <a href="{% url 'students:profile_edit' %}" class="sm-btn sm-btn-outline sm-btn-sm">Upload CV to Apply</a>
+                        {% elif item.eligible %}
+                            <form method="post" action="{% url 'students:apply_internship' item.internship.id %}" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="sm-btn sm-btn-primary sm-btn-sm">Apply</button>
+                            </form>
+                        {% else %}
+                            <span class="badge badge-muted">Need 50%</span>
+                        {% endif %}
                     {% else %}
-                        <span class="badge badge-muted">Need 50%</span>
+                        <a href="{% url 'students:internship_detail' item.internship.id %}" class="sm-btn sm-btn-outline sm-btn-sm">View Details</a>
                     {% endif %}
                 </div>
             </div>

@@ -1,5 +1,7 @@
+from datetime import date
 from django.db import models
 from django.conf import settings
+from django.core.exceptions import ValidationError
 
 
 class CompanyProfile(models.Model):
@@ -70,6 +72,20 @@ class Internship(models.Model):
         accepted = self.applications.filter(status='accepted').count()
         return max(0, self.total_positions - accepted)
 
+    @property
+    def skills_locked(self):
+        """Returns True if the listing has received at least one application."""
+        return self.applications.exists()
+
+    def clean(self):
+        super().clean()
+        if self.total_positions is not None and self.total_positions < 1:
+            raise ValidationError({'total_positions': 'Total positions must be at least 1.'})
+        if self.deadline and self._state.adding and self.deadline <= date.today():
+            raise ValidationError({'deadline': 'Deadline must be in the future.'})
+        if self.stipend is not None and self.stipend < 0:
+            raise ValidationError({'stipend': 'Stipend cannot be negative.'})
+
     def __str__(self):
         return self.title
 
@@ -93,6 +109,22 @@ class InternshipSkill(models.Model):
 
     class Meta:
         unique_together = ('internship', 'skill')
+
+    def clean(self):
+        super().clean()
+        if self.internship_id and self.internship.skills_locked:
+            raise ValidationError(
+                "Listing skill requirements are locked because applications have already been received. "
+                "Close and repost the internship instead."
+            )
+
+    def delete(self, *args, **kwargs):
+        if self.internship_id and self.internship.skills_locked:
+            raise ValidationError(
+                "Listing skill requirements are locked because applications have already been received. "
+                "Close and repost the internship instead."
+            )
+        return super().delete(*args, **kwargs)
 
 
 class InternshipCollege(models.Model):

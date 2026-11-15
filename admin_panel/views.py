@@ -3,10 +3,23 @@ import json
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse
 from django.contrib import messages
+from django.contrib.sessions.models import Session
 from accounts.models import User
 from companies.models import Internship, CompanyProfile
 from students.models import Application, JournalEntry
 from core.models import Skill, Category, College
+from core.emails import notify_listing_moderation
+
+
+def invalidate_user_sessions(user):
+    """BUG-09: Invalidate all active sessions for the given user upon status change or suspension."""
+    for s in Session.objects.iterator():
+        try:
+            data = s.get_decoded()
+            if data.get('_auth_user_id') == str(user.id):
+                s.delete()
+        except Exception:
+            pass
 
 
 def admin_required(view_func):
@@ -83,6 +96,7 @@ def toggle_user_status(request, user_id):
     user = get_object_or_404(User, id=user_id)
     if user.status == 'active':
         user.status = 'suspended'
+        invalidate_user_sessions(user)
     elif user.status == 'suspended':
         user.status = 'active'
     elif user.status == 'pending_admin':
@@ -111,10 +125,12 @@ def approve_internship(request, internship_id):
     if internship.status == 'pending':
         internship.status = 'approved'
         internship.save()
+        notify_listing_moderation(internship, 'approved')
         messages.success(request, f"Internship '{internship.title}' approved.")
     elif internship.status == 'approved':
         internship.status = 'rejected'
         internship.save()
+        notify_listing_moderation(internship, 'rejected')
         messages.success(request, f"Internship '{internship.title}' rejected.")
     return redirect('admin_panel:internship_list')
 
@@ -168,6 +184,8 @@ def company_list(request):
 def suspend_company(request, company_id):
     company = get_object_or_404(CompanyProfile, id=company_id)
     company.suspended = not company.suspended
+    if company.suspended:
+        invalidate_user_sessions(company.user)
     company.save()
     action = "suspended" if company.suspended else "reinstated"
     messages.success(request, f"Company '{company.organization_name}' {action}.")
