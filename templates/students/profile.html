@@ -34,7 +34,7 @@
                 {% if profile.cv_file %}
                     <div class="sm-alert sm-alert-success">
                         <span>CV uploaded</span>
-                        <a href="{{ profile.cv_file.url }}" target="_blank" class="sm-btn sm-btn-outline sm-btn-sm">View CV</a>
+                        <a href="{% url 'students:view_my_cv' %}" target="_blank" class="sm-btn sm-btn-outline sm-btn-sm">View CV</a>
                     </div>
                 {% else %}
                     <div class="sm-alert sm-alert-warning">

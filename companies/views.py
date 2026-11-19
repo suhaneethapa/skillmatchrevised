@@ -7,15 +7,25 @@ from .models import Internship, InternshipSkill, CompanyProfile
 from core.models import Skill, Category
 from students.models import Application
 from core.emails import notify_offer_issued, notify_application_rejected
-from matching.engine import compute_match_score
+from matching.engine import compute_match_score, explain_match
 from core.validators import validate_document_file
 from .forms import InternshipForm, IssueOfferForm
+
+
+def is_company_authorized(request):
+    """Ensure company user is active and company profile is not suspended."""
+    if request.user.status != 'active' or getattr(request.user.company_profile, 'suspended', False):
+        messages.error(request, "Your company account is awaiting administrator approval and cannot manage listings.")
+        return False
+    return True
 
 
 @login_required
 def dashboard(request):
     if request.user.role != 'company':
         return redirect('accounts:home')
+    if request.user.status != 'active':
+        return redirect('accounts:account_status')
     
     profile = request.user.company_profile
     internships = profile.internships.all()
@@ -30,6 +40,8 @@ def dashboard(request):
 def profile(request):
     if request.user.role != 'company':
         return redirect('accounts:home')
+    if request.user.status != 'active':
+        return redirect('accounts:account_status')
     
     profile = request.user.company_profile
     return render(request, 'companies/profile.html', {
@@ -41,6 +53,8 @@ def profile(request):
 def profile_edit(request):
     if request.user.role != 'company':
         return redirect('accounts:home')
+    if request.user.status != 'active':
+        return redirect('accounts:account_status')
     
     profile = request.user.company_profile
     
@@ -79,6 +93,8 @@ def profile_edit(request):
 def my_listings(request):
     if request.user.role != 'company':
         return redirect('accounts:home')
+    if not is_company_authorized(request):
+        return redirect('accounts:account_status')
     
     internships = request.user.company_profile.internships.all()
     return render(request, 'companies/listings.html', {
@@ -91,6 +107,8 @@ def my_listings(request):
 def create_listing(request):
     if request.user.role != 'company':
         return redirect('accounts:home')
+    if not is_company_authorized(request):
+        return redirect('accounts:account_status')
     
     skills = Skill.objects.filter(is_active=True)
     categories = Category.objects.all()
@@ -110,7 +128,7 @@ def create_listing(request):
         if form.is_valid():
             internship = form.save(commit=False)
             internship.company = request.user.company_profile
-            internship.status = 'approved'
+            internship.status = 'pending'
             internship.save()
             
             for skill_id in required_skills:
@@ -118,7 +136,7 @@ def create_listing(request):
             for skill_id in preferred_skills:
                 InternshipSkill.objects.create(internship=internship, skill_id=skill_id, is_required=False)
             
-            messages.success(request, "Internship posted successfully!")
+            messages.success(request, "Internship submitted for administrative moderation! It will become visible to students once approved.")
             return redirect('companies:dashboard')
         else:
             for field, errors in form.errors.items():
@@ -139,6 +157,8 @@ def create_listing(request):
 def edit_listing(request, internship_id):
     if request.user.role != 'company':
         return redirect('accounts:home')
+    if not is_company_authorized(request):
+        return redirect('accounts:account_status')
     
     internship = get_object_or_404(
         Internship.objects.prefetch_related('internship_skills'),
@@ -211,6 +231,8 @@ def edit_listing(request, internship_id):
 def delete_listing(request, internship_id):
     if request.user.role != 'company':
         return redirect('accounts:home')
+    if not is_company_authorized(request):
+        return redirect('accounts:account_status')
     
     internship = get_object_or_404(Internship, id=internship_id, company=request.user.company_profile)
     
@@ -228,29 +250,103 @@ def delete_listing(request, internship_id):
 def view_applicants(request, internship_id):
     if request.user.role != 'company':
         return redirect('accounts:home')
+    if not is_company_authorized(request):
+        return redirect('accounts:account_status')
     
     internship = get_object_or_404(
         Internship.objects.prefetch_related('internship_skills__skill'),
         id=internship_id,
         company=request.user.company_profile
     )
-    req_skills = list(internship.internship_skills.values_list('skill__name', 'is_required'))
-    applications = list(internship.applications.select_related('student__student_profile').prefetch_related('student__student_skills__skill').all())
+    applications = list(
+        internship.applications.select_related('student__student_profile')
+        .prefetch_related('student__student_skills__skill')
+        .all()
+    )
     
-    # Recompute live match score for each applicant (BUG-03)
+    # Recompute live match score and detailed explanation for each applicant in-memory for display (BUG-03)
     for app in applications:
-        student_skills = set(app.student.student_skills.values_list('skill__name', flat=True))
-        current_score, gap = compute_match_score(student_skills, req_skills)
-        if float(app.match_score) != current_score:
-            app.match_score = current_score
-            app.save(update_fields=['match_score'])
-        app.current_score = current_score
+        match = explain_match(app.student, internship)
+        app.match_score = match['score']
+        app.current_score = match['score']
+        app.match_explanation = match
+
+    # Filter: Application status
+    status_filter = request.GET.get('status', '').strip()
+    if status_filter in ['pending', 'offer_issued', 'accepted', 'rejected', 'withdrawn']:
+        applications = [a for a in applications if a.status == status_filter]
+
+    # Filter: Minimum match percentage
+    min_match_filter = request.GET.get('min_match', '').strip()
+    if min_match_filter:
+        try:
+            min_match_val = float(min_match_filter)
+            applications = [a for a in applications if float(a.match_score) >= min_match_val]
+        except ValueError:
+            pass
+
+    # Sort applicants
+    sort_by = request.GET.get('sort', 'match_desc').strip()
+    if sort_by == 'match_asc':
+        applications.sort(key=lambda a: float(a.match_score))
+    elif sort_by == 'date_desc':
+        applications.sort(key=lambda a: a.applied_at, reverse=True)
+    elif sort_by == 'date_asc':
+        applications.sort(key=lambda a: a.applied_at)
+    elif sort_by == 'name':
+        applications.sort(key=lambda a: a.student.email.lower())
+    else:  # 'match_desc' default
+        applications.sort(key=lambda a: float(a.match_score), reverse=True)
+        sort_by = 'match_desc'
     
-    applications.sort(key=lambda a: float(a.match_score), reverse=True)
-    
+    status_choices = [
+        ('pending', 'Pending Review'),
+        ('offer_issued', 'Offer Issued'),
+        ('accepted', 'Accepted'),
+        ('rejected', 'Rejected'),
+        ('withdrawn', 'Withdrawn'),
+    ]
+
     return render(request, 'companies/applicants.html', {
         'internship': internship,
-        'applications': applications
+        'applications': applications,
+        'status_filter': status_filter,
+        'min_match_filter': min_match_filter,
+        'sort_by': sort_by,
+        'status_choices': status_choices,
+    })
+
+
+@login_required
+def applicant_detail(request, application_id):
+    if request.user.role != 'company':
+        return redirect('accounts:home')
+    if not is_company_authorized(request):
+        return redirect('accounts:account_status')
+
+    application = get_object_or_404(
+        Application.objects.select_related(
+            'student__student_profile__college',
+            'internship__company',
+            'internship__category'
+        ).prefetch_related(
+            'student__student_skills__skill',
+            'internship__internship_skills__skill'
+        ),
+        id=application_id,
+        internship__company=request.user.company_profile
+    )
+    internship = application.internship
+    match = explain_match(application.student, internship)
+    application.match_score = match['score']
+    application.current_score = match['score']
+
+    return render(request, 'companies/applicant_detail.html', {
+        'application': application,
+        'internship': internship,
+        'student': application.student,
+        'profile': getattr(application.student, 'student_profile', None),
+        'match': match,
     })
 
 
@@ -258,6 +354,8 @@ def view_applicants(request, internship_id):
 def issue_offer(request, application_id):
     if request.user.role != 'company':
         return redirect('accounts:home')
+    if not is_company_authorized(request):
+        return redirect('accounts:account_status')
     
     application = get_object_or_404(
         Application.objects.select_related('internship'),
@@ -312,6 +410,8 @@ def issue_offer(request, application_id):
 def reject_applicant(request, application_id):
     if request.user.role != 'company':
         return redirect('accounts:home')
+    if not is_company_authorized(request):
+        return redirect('accounts:account_status')
     
     application = get_object_or_404(Application, id=application_id, internship__company=request.user.company_profile)
     

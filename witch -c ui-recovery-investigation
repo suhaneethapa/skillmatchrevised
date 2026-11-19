@@ -1,0 +1,71 @@
+warning: in the working copy of 'accounts/forms.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'accounts/models.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'accounts/tests.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'accounts/urls.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'accounts/views.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'admin_panel/tests.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'admin_panel/urls.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'admin_panel/views.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'companies/tests.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'companies/urls.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'companies/views.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'config/urls.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'core/emails.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'core/middleware.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'core/tests.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'core/validators.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'matching/engine.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'matching/tests.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'students/models.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'students/tests.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'students/urls.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'students/views.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'templates/accounts/register.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'templates/admin_panel/company_list.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'templates/admin_panel/internship_list.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'templates/admin_panel/user_list.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'templates/base.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'templates/companies/applicants.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'templates/companies/dashboard.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'templates/students/browse_internships.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'templates/students/dashboard.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'templates/students/internship_detail.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'templates/students/profile.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'templates/students/profile_edit.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'templates/students/view_offer.html', LF will be replaced by CRLF the next time Git touches it
+ accounts/forms.py                          |  10 [32m+[m[31m-[m
+ accounts/models.py                         |  19 [32m+[m[31m-[m
+ accounts/tests.py                          | 676 [32m++++++++++++++++++++++++++++[m[31m-[m
+ accounts/urls.py                           |   1 [32m+[m
+ accounts/views.py                          | 151 [32m++++++[m[31m-[m
+ admin_panel/tests.py                       | 239 [32m+++++++++[m[31m-[m
+ admin_panel/urls.py                        |   1 [32m+[m
+ admin_panel/views.py                       |  49 [32m++[m[31m-[m
+ companies/tests.py                         | 431 [32m+++++++++++++++++[m[31m-[m
+ companies/urls.py                          |   1 [32m+[m
+ companies/views.py                         | 130 [32m+++++[m[31m-[m
+ config/urls.py                             |   7 [32m+[m[31m-[m
+ core/emails.py                             |  18 [32m+[m
+ core/middleware.py                         |  59 [32m++[m[31m-[m
+ core/tests.py                              | 158 [32m+++++++[m
+ core/validators.py                         |  70 [32m++[m[31m-[m
+ matching/engine.py                         |  87 [32m+++[m[31m-[m
+ matching/tests.py                          | 183 [32m+++++++[m[31m-[m
+ students/models.py                         |   8 [32m+[m[31m-[m
+ students/tests.py                          | 653 [32m+++++++++++++++++++++++++++[m[31m-[m
+ students/urls.py                           |   3 [32m+[m
+ students/views.py                          | 388 [32m++++++++++++++[m[31m---[m
+ templates/accounts/register.html           |   4 [32m+[m
+ templates/admin_panel/company_list.html    |   9 [32m+[m[31m-[m
+ templates/admin_panel/internship_list.html |  23 [32m+[m[31m-[m
+ templates/admin_panel/user_list.html       |  37 [32m+[m[31m-[m
+ templates/base.html                        |   7 [32m+[m[31m-[m
+ templates/companies/applicants.html        | 124 [32m+++++[m[31m-[m
+ templates/companies/dashboard.html         |   8 [32m+[m
+ templates/students/browse_internships.html |  97 [32m++++[m[31m-[m
+ templates/students/dashboard.html          |  89 [32m+++[m[31m-[m
+ templates/students/internship_detail.html  |  48 [32m+[m[31m-[m
+ templates/students/profile.html            |   2 [32m+[m[31m-[m
+ templates/students/profile_edit.html       |   2 [32m+[m[31m-[m
+ templates/students/view_offer.html         |  14 [32m+[m[31m-[m
+ 35 files changed, 3622 insertions(+), 184 deletions(-)

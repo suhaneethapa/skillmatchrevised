@@ -1,0 +1,201 @@
+{% extends 'base.html' %}
+
+{% block title %}Applicant Screening - {{ student.email }} - SkillMatch{% endblock %}
+
+{% block content %}
+<div class="sm-page">
+    <div style="margin-bottom: 16px;">
+        <a href="{% url 'companies:view_applicants' internship.id %}" class="sm-btn sm-btn-outline sm-btn-sm">&larr; Back to Applicants</a>
+    </div>
+
+    <!-- Candidate Header Card -->
+    <div class="sm-card sm-card-pad" style="margin-bottom: 24px;">
+        <div class="sm-flex-between" style="align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+            <div class="sm-flex-center" style="gap: 16px;">
+                <span class="sm-avatar" style="width: 48px; height: 48px; font-size: 1.25rem;">{{ student.email|first|upper }}</span>
+                <div>
+                    <h4 style="margin: 0 0 4px 0;">{{ student.email }}</h4>
+                    <p class="sm-muted" style="margin: 0; font-size: 0.92rem;">
+                        {% if profile %}
+                            <strong>{{ profile.college.name }}</strong> &middot; {{ profile.department }} &middot; Semester {{ profile.semester }}
+                        {% else %}
+                            <span class="sm-muted sm-small">Profile information not set</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+            <div style="text-align: right;">
+                <span class="match-pill {% if match.score >= 70 %}match-high{% elif match.score >= 50 %}match-mid{% else %}match-low{% endif %}" style="font-size: 1.15rem; padding: 6px 16px;">
+                    {{ match.score }}% Match
+                </span>
+                <div style="margin-top: 6px;">
+                    <span class="badge {% if application.status == 'pending' %}badge-warning{% elif application.status == 'offer_issued' %}badge-info{% elif application.status == 'accepted' %}badge-success{% elif application.status == 'rejected' %}badge-danger{% else %}badge-muted{% endif %}">
+                        Status: {{ application.get_status_display }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="sm-split">
+        <!-- Main Column: Skill Analysis & Cover Letter -->
+        <div>
+            <!-- Match Compatibility Assessment -->
+            <div class="sm-card sm-card-pad" style="margin-bottom: 20px;">
+                <h5 style="margin-bottom: 12px;">Skill Alignment Analysis</h5>
+                <div class="sm-alert {% if match.eligible %}sm-alert-info{% else %}sm-alert-warning{% endif %}" style="margin-bottom: 16px;">
+                    <strong>Matching Assessment:</strong> {{ match.explanation }}
+                </div>
+
+                <!-- Required Skills -->
+                <div style="margin-bottom: 16px;">
+                    <div style="font-weight: 600; font-size: 0.85rem; color: var(--sm-text-muted); margin-bottom: 8px;">
+                        REQUIRED SKILLS (WEIGHT 2.0)
+                    </div>
+                    <div class="skills-row">
+                        {% for skill in match.matched_required %}
+                            <span class="skill-tag" style="background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; padding: 4px 10px; font-size: 0.85rem;">
+                                &check; {{ skill }} <small>(Matched)</small>
+                            </span>
+                        {% endfor %}
+                        {% for skill in match.missing_required %}
+                            <span class="skill-tag" style="background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; padding: 4px 10px; font-size: 0.85rem;">
+                                &times; {{ skill }} <small>(Missing)</small>
+                            </span>
+                        {% endfor %}
+                        {% if not match.matched_required and not match.missing_required %}
+                            <span class="sm-muted sm-small">None specified</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Preferred Skills -->
+                <div>
+                    <div style="font-weight: 600; font-size: 0.85rem; color: var(--sm-text-muted); margin-bottom: 8px;">
+                        PREFERRED SKILLS (WEIGHT 1.0)
+                    </div>
+                    <div class="skills-row">
+                        {% for skill in match.matched_preferred %}
+                            <span class="skill-tag" style="background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; padding: 4px 10px; font-size: 0.85rem;">
+                                &check; {{ skill }} <small>(Matched)</small>
+                            </span>
+                        {% endfor %}
+                        {% for skill in match.missing_preferred %}
+                            <span class="skill-tag" style="background: var(--sm-muted-bg); color: var(--sm-text-muted); padding: 4px 10px; font-size: 0.85rem;">
+                                {{ skill }} <small>(Missing)</small>
+                            </span>
+                        {% endfor %}
+                        {% if not match.matched_preferred and not match.missing_preferred %}
+                            <span class="sm-muted sm-small">None specified</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cover Letter -->
+            <div class="sm-card sm-card-pad" style="margin-bottom: 20px;">
+                <h5 style="margin-bottom: 12px;">Cover Letter / Candidate Statement</h5>
+                {% if application.cover_letter %}
+                    <div style="white-space: pre-line; line-height: 1.6; color: var(--sm-text); font-size: 0.95rem;">
+                        {{ application.cover_letter }}
+                    </div>
+                {% else %}
+                    <p class="sm-muted sm-small" style="margin: 0;">No cover letter was submitted with this application.</p>
+                {% endif %}
+            </div>
+
+            <!-- Student Profile Information -->
+            {% if profile %}
+            <div class="sm-card sm-card-pad">
+                <h5 style="margin-bottom: 12px;">Candidate Profile Details</h5>
+                {% if profile.bio %}
+                    <p style="margin-bottom: 12px; line-height: 1.5; font-size: 0.92rem;">{{ profile.bio }}</p>
+                {% endif %}
+                <div class="sm-grid cols-2" style="font-size: 0.88rem; gap: 8px;">
+                    <div><strong>College:</strong> {{ profile.college.name }}</div>
+                    <div><strong>Department:</strong> {{ profile.department }}</div>
+                    <div><strong>Semester:</strong> Semester {{ profile.semester }}</div>
+                    <div><strong>College Verified:</strong> {% if profile.college_verified %}<span style="color: #16a34a;">&check; Verified</span>{% else %}<span style="color: #ca8a04;">Pending</span>{% endif %}</div>
+                    {% if profile.github_url %}
+                        <div><strong>GitHub:</strong> <a href="{{ profile.github_url }}" target="_blank" rel="noopener">{{ profile.github_url }}</a></div>
+                    {% endif %}
+                    {% if profile.linkedin_url %}
+                        <div><strong>LinkedIn:</strong> <a href="{{ profile.linkedin_url }}" target="_blank" rel="noopener">{{ profile.linkedin_url }}</a></div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Sidebar: Application Metadata & Screening Actions -->
+        <div>
+            <!-- Overview & CV Card -->
+            <div class="sm-card sm-card-pad" style="margin-bottom: 20px;">
+                <h5 style="margin-bottom: 14px;">Application Details</h5>
+                <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.9rem;">
+                    <div class="sm-flex-between">
+                        <span class="sm-muted">Applied Date:</span>
+                        <strong>{{ application.applied_at|date:"M d, Y" }}</strong>
+                    </div>
+                    <div class="sm-flex-between">
+                        <span class="sm-muted">Internship Role:</span>
+                        <strong>{{ internship.title }}</strong>
+                    </div>
+                    <div class="sm-flex-between">
+                        <span class="sm-muted">Curriculum Vitae:</span>
+                        {% if profile and profile.cv_file %}
+                            <a href="{% url 'students:view_cv' student.id %}" target="_blank" class="sm-btn sm-btn-outline sm-btn-sm">Download CV</a>
+                        {% else %}
+                            <span class="badge badge-muted">No CV File</span>
+                        {% endif %}
+                    </div>
+                    {% if application.offer_letter %}
+                    <div class="sm-flex-between">
+                        <span class="sm-muted">Offer Letter:</span>
+                        <a href="{% url 'students:view_offer_letter' application.id %}" target="_blank" class="sm-btn sm-btn-outline sm-btn-sm">View Offer Document</a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Screening Decision Actions -->
+            <div class="sm-card sm-card-pad">
+                <h5 style="margin-bottom: 12px;">Screening Actions</h5>
+                <p class="sm-muted sm-small" style="margin-bottom: 16px;">
+                    Match percentage is an analytical screening aid. Review the candidate's profile and CV before taking action.
+                </p>
+
+                {% if application.status == 'pending' %}
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <a href="{% url 'companies:issue_offer' application.id %}" class="sm-btn sm-btn-success sm-btn-block" style="text-align: center;">Issue Offer</a>
+                        <a href="{% url 'companies:reject_applicant' application.id %}" class="sm-btn sm-btn-danger-outline sm-btn-block" style="text-align: center;">Reject Applicant</a>
+                    </div>
+                {% elif application.status == 'offer_issued' %}
+                    <div class="sm-alert sm-alert-info" style="margin-bottom: 12px;">
+                        <span>An offer has been issued to this candidate and is awaiting their response.</span>
+                    </div>
+                    <a href="{% url 'companies:reject_applicant' application.id %}" class="sm-btn sm-btn-danger-outline sm-btn-block" style="text-align: center;">Revoke / Reject</a>
+                {% elif application.status == 'accepted' %}
+                    <div class="sm-alert sm-alert-success" style="margin-bottom: 0;">
+                        <span><strong>Offer Accepted!</strong> Candidate has accepted the internship placement.</span>
+                    </div>
+                {% elif application.status == 'rejected' %}
+                    <div class="sm-alert sm-alert-danger" style="margin-bottom: 0;">
+                        <span><strong>Application Rejected.</strong></span>
+                        {% if application.rejection_reason %}
+                            <div style="margin-top: 4px; font-size: 0.82rem;">Reason: {{ application.rejection_reason }}</div>
+                        {% endif %}
+                        {% if application.rejection_feedback %}
+                            <div style="margin-top: 2px; font-size: 0.82rem;">Feedback: {{ application.rejection_feedback }}</div>
+                        {% endif %}
+                    </div>
+                {% elif application.status == 'withdrawn' %}
+                    <div class="sm-alert sm-alert-warning" style="margin-bottom: 0;">
+                        <span>This application was withdrawn by the student.</span>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -60,6 +60,15 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     objects = UserManager()
 
+    @property
+    def email_verified(self):
+        """
+        Returns True if the user has completed email verification.
+        In SkillMatch, newly registered accounts start as 'pending_email'.
+        Once verified, status transitions to 'pending_admin' or 'active'.
+        """
+        return self.status != "pending_email"
+
     def __str__(self):
         return f"{self.email} ({self.role})"
 
@@ -67,12 +76,20 @@ class User(AbstractBaseUser, PermissionsMixin):
 class EmailVerificationToken(models.Model):
     """
     Stores the token sent via email when a user registers.
-    Single-use, no expiry stored here (checked in view logic).
+    Single-use, valid for 24 hours.
     """
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     token = models.UUIDField(default=uuid.uuid4, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     used = models.BooleanField(default=False)
+
+    @property
+    def is_expired(self):
+        from datetime import timedelta
+        return timezone.now() > self.created_at + timedelta(hours=24)
+
+    def is_valid_for_verification(self):
+        return not self.used and not self.is_expired
 
 
 class PasswordResetToken(models.Model):

@@ -1,10 +1,10 @@
 from datetime import date, timedelta
 from unittest.mock import patch
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core import mail
-from django.test import TestCase, override_settings
+from django.test import TestCase, override_settings, Client
 from django.urls import reverse
 
 from accounts.models import User
@@ -204,7 +204,7 @@ class Bug03RevalidateSkillsRegressionTests(TestCase):
         )
 
     def test_skills_drop_below_threshold_recomputes_live_on_student_dashboard(self):
-        """When student edits skills to drop below 50%, student dashboard recomputes score and displays warning."""
+        """When student edits skills to drop below 50%, dashboard recomputes in-memory score and displays warning without DB mutation."""
         # Student removes all skills
         StudentSkill.objects.filter(student=self.student_user).delete()
 
@@ -212,12 +212,17 @@ class Bug03RevalidateSkillsRegressionTests(TestCase):
         response = self.client.get(reverse('students:dashboard'))
         self.assertEqual(response.status_code, 200)
 
-        # Stored application match_score should be updated to 0.00%
+        # Database record must NOT be updated by GET request (preserves original 100.0)
         self.application.refresh_from_db()
-        self.assertEqual(float(self.application.match_score), 0.0)
-        self.assertTrue(self.application.is_below_threshold)
+        self.assertEqual(float(self.application.match_score), 100.0)
 
-        # Warning chip must be visible on the dashboard
+        # In-memory application object rendered in response displays the live calculated score (0.0%)
+        apps_in_context = response.context['applications']
+        self.assertEqual(float(apps_in_context[0].match_score), 0.0)
+        self.assertTrue(apps_in_context[0].is_below_threshold)
+
+        # Warning chip and live calculated score must be visible on the dashboard
+        self.assertContains(response, "0.0%")
         self.assertContains(response, "Below threshold &mdash; skills updated")
 
     def test_skills_drop_below_threshold_displays_warning_on_company_applicant_list(self):
@@ -301,7 +306,8 @@ class Bug04PreventDuplicateApplicationsRegressionTests(TestCase):
             college=self.college,
             department="BIM",
             semester=6,
-            cv_file=dummy_cv
+            cv_file=dummy_cv,
+            college_verified=True
         )
         StudentSkill.objects.create(student=self.student_user, skill=self.python_skill)
 
@@ -410,7 +416,8 @@ class Bug05EnforceListingStatusAndDeadlineRegressionTests(TestCase):
             college=self.college,
             department="BIM",
             semester=6,
-            cv_file=dummy_cv
+            cv_file=dummy_cv,
+            college_verified=True
         )
         StudentSkill.objects.create(student=self.student_user, skill=self.python_skill)
 
@@ -520,7 +527,7 @@ class Bug08AutoWithdrawOtherApplicationsRegressionTests(TestCase):
         accept_url = reverse('students:accept_offer', args=[self.app_b.id])
 
         with self.captureOnCommitCallbacks(execute=True):
-            response = self.client.get(accept_url, follow=True)
+            response = self.client.post(accept_url, follow=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Congratulations! You have accepted the offer")
@@ -545,7 +552,7 @@ class Bug08AutoWithdrawOtherApplicationsRegressionTests(TestCase):
         accept_url = reverse('students:accept_offer', args=[self.app_b.id])
 
         with self.captureOnCommitCallbacks(execute=True):
-            response = self.client.get(accept_url, follow=True)
+            response = self.client.post(accept_url, follow=True)
 
         self.assertEqual(response.status_code, 200)
 
@@ -924,6 +931,630 @@ class WithdrawApplicationSecurityRegressionTests(TestCase):
         self.assertContains(apps_resp, f'action="{reverse("students:withdraw_application", args=[self.app.id])}"')
         self.assertContains(apps_resp, 'method="post"')
         self.assertContains(apps_resp, "Withdraw this application?")
+
+
+@override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+class Phase3StateMutationSecurityRegressionTests(TestCase):
+    def setUp(self):
+        mail.outbox.clear()
+        self.college = College.objects.create(name="Apex College")
+        self.category = Category.objects.create(name="Software")
+        self.py_skill = Skill.objects.create(name="Python", category=self.category)
+
+        self.student = User.objects.create_user(
+            email="phase3_student@example.com",
+            password="DemoPassword123!",
+            role="student",
+            status="active"
+        )
+        self.profile = StudentProfile.objects.create(
+            user=self.student,
+            college=self.college,
+            department="BIM",
+            semester=6,
+            college_verified=True
+        )
+
+        self.other_student = User.objects.create_user(
+            email="other_phase3_student@example.com",
+            password="DemoPassword123!",
+            role="student",
+            status="active"
+        )
+        self.other_profile = StudentProfile.objects.create(
+            user=self.other_student,
+            college=self.college,
+            department="BIM",
+            semester=6,
+            college_verified=True
+        )
+
+        self.company_user = User.objects.create_user(
+            email="phase3_company@example.com",
+            password="DemoPassword123!",
+            role="company",
+            status="active"
+        )
+        self.company_profile = CompanyProfile.objects.create(
+            user=self.company_user,
+            organization_name="SecureTech Corp",
+            contact_person="Director",
+            industry="IT",
+            hq_location="Kathmandu"
+        )
+        self.internship = Internship.objects.create(
+            company=self.company_profile,
+            title="Backend Associate",
+            category=self.category,
+            location_type="remote",
+            deadline=date.today() + timedelta(days=15),
+            total_positions=1,
+            expected_duration="3 months",
+            status="approved"
+        )
+        self.app = Application.objects.create(
+            student=self.student,
+            internship=self.internship,
+            match_score=90.0,
+            status='offer_issued'
+        )
+
+    def test_accept_offer_rejects_get_and_requires_post(self):
+        """GET request to accept_offer returns 405 Method Not Allowed; application remains offer_issued."""
+        self.client.login(email=self.student.email, password="DemoPassword123!")
+        accept_url = reverse('students:accept_offer', args=[self.app.id])
+
+        response = self.client.get(accept_url)
+        self.assertEqual(response.status_code, 405)
+
+        self.app.refresh_from_db()
+        self.assertEqual(self.app.status, 'offer_issued')
+
+    def test_decline_offer_rejects_get_and_requires_post(self):
+        """GET request to decline_offer returns 405 Method Not Allowed; application remains offer_issued."""
+        self.client.login(email=self.student.email, password="DemoPassword123!")
+        decline_url = reverse('students:decline_offer', args=[self.app.id])
+
+        response = self.client.get(decline_url)
+        self.assertEqual(response.status_code, 405)
+
+        self.app.refresh_from_db()
+        self.assertEqual(self.app.status, 'offer_issued')
+
+    def test_accept_offer_post_succeeds_and_locks_position(self):
+        """POST request to accept_offer confirms placement and updates listing capacity."""
+        self.client.login(email=self.student.email, password="DemoPassword123!")
+        accept_url = reverse('students:accept_offer', args=[self.app.id])
+
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(accept_url)
+        self.assertRedirects(response, reverse('students:dashboard'))
+
+        self.app.refresh_from_db()
+        self.assertEqual(self.app.status, 'accepted')
+
+        # Since total_positions was 1, internship is closed
+        self.internship.refresh_from_db()
+        self.assertEqual(self.internship.status, 'closed')
+        self.assertEqual(self.internship.remaining_positions, 0)
+
+    def test_decline_offer_post_succeeds_and_updates_status(self):
+        """POST request to decline_offer updates application to rejected."""
+        self.client.login(email=self.student.email, password="DemoPassword123!")
+        decline_url = reverse('students:decline_offer', args=[self.app.id])
+
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(decline_url)
+        self.assertRedirects(response, reverse('students:dashboard'))
+
+        self.app.refresh_from_db()
+        self.assertEqual(self.app.status, 'rejected')
+
+    def test_cannot_accept_already_accepted_or_rejected_offer(self):
+        """Accepting an offer that is already accepted or rejected is rejected gracefully."""
+        self.client.login(email=self.student.email, password="DemoPassword123!")
+        self.app.status = 'accepted'
+        self.app.save()
+
+        accept_url = reverse('students:accept_offer', args=[self.app.id])
+        response = self.client.post(accept_url, follow=True)
+        self.assertRedirects(response, reverse('students:dashboard'))
+        self.assertContains(response, "This offer is no longer valid")
+
+    def test_unauthorized_student_cannot_accept_another_offer(self):
+        """A different student cannot accept an offer that does not belong to them."""
+        self.client.login(email=self.other_student.email, password="DemoPassword123!")
+        accept_url = reverse('students:accept_offer', args=[self.app.id])
+
+        response = self.client.post(accept_url)
+        self.assertRedirects(response, reverse('students:dashboard'))
+
+        self.app.refresh_from_db()
+        self.assertEqual(self.app.status, 'offer_issued')
+
+    def test_view_offer_renders_post_forms_with_csrf(self):
+        """View offer page renders semantic POST forms with CSRF tokens for Accept and Decline."""
+        self.client.login(email=self.student.email, password="DemoPassword123!")
+        view_url = reverse('students:view_offer', args=[self.app.id])
+
+        response = self.client.get(view_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'action="{reverse("students:accept_offer", args=[self.app.id])}"')
+        self.assertContains(response, f'action="{reverse("students:decline_offer", args=[self.app.id])}"')
+        self.assertContains(response, 'method="post"')
+
+    def test_get_browse_and_detail_do_not_persist_match_score(self):
+        """GET browse_internships and internship_detail compute match score for display without saving to database."""
+        skill = Skill.objects.create(name="Postgres", category=self.category)
+        InternshipSkill.objects.create(internship=self.internship, skill=skill, is_required=True)
+        StudentSkill.objects.create(student=self.student, skill=skill)
+
+        # Set initial match score in database to 12.50
+        self.app.match_score = 12.50
+        self.app.save()
+
+        self.client.login(email=self.student.email, password="DemoPassword123!")
+
+        # 1. GET browse_internships
+        browse_url = reverse('students:browse_internships')
+        resp_browse = self.client.get(browse_url)
+        self.assertEqual(resp_browse.status_code, 200)
+
+        # Application record in DB should NOT have been updated
+        self.app.refresh_from_db()
+        self.assertEqual(float(self.app.match_score), 12.50)
+
+        # 2. GET internship_detail
+        detail_url = reverse('students:internship_detail', args=[self.internship.id])
+        resp_detail = self.client.get(detail_url)
+        self.assertEqual(resp_detail.status_code, 200)
+
+        # Application record in DB still untouched
+        self.app.refresh_from_db()
+        self.assertEqual(float(self.app.match_score), 12.50)
+
+    def test_acceptance_notifications_deferred_and_not_sent_on_rollback(self):
+        """Email notifications scheduled inside accept_offer transaction are NOT sent if transaction rolls back after registration."""
+        mail.outbox.clear()
+        self.client.login(email=self.student.email, password="DemoPassword123!")
+        accept_url = reverse('students:accept_offer', args=[self.app.id])
+
+        original_on_commit = transaction.on_commit
+        callback_registered = False
+
+        def hook_on_commit(func, *args, **kwargs):
+            nonlocal callback_registered
+            # 1. Successfully register callback using real transaction.on_commit implementation
+            original_on_commit(func, *args, **kwargs)
+            callback_registered = True
+            # 2. Deliberately raise an IntegrityError while transaction is still active
+            raise IntegrityError("Simulated DB failure after on_commit registration")
+
+        with self.captureOnCommitCallbacks(execute=True) as captured_callbacks:
+            with patch('students.views.transaction.on_commit', side_effect=hook_on_commit):
+                with self.assertRaises(IntegrityError):
+                    self.client.post(accept_url)
+
+        # Confirm the transaction reached and registered at least one on_commit callback
+        self.assertTrue(callback_registered)
+
+        # Confirm no on_commit callbacks survived the rollback
+        self.assertEqual(len(captured_callbacks), 0)
+
+        # Confirm database rolled back (application status remains offer_issued)
+        self.app.refresh_from_db()
+        self.assertEqual(self.app.status, 'offer_issued')
+
+        # Confirm internship remaining capacity and status remain untouched
+        self.internship.refresh_from_db()
+        self.assertEqual(self.internship.status, 'approved')
+
+        # Confirm NO emails were sent
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_csrf_enforcement_on_accept_and_decline_offer(self):
+        """accept_offer and decline_offer reject POSTs without valid CSRF token with HTTP 403."""
+        csrf_client = Client(enforce_csrf_checks=True)
+        csrf_client.login(email=self.student.email, password="DemoPassword123!")
+
+        accept_url = reverse('students:accept_offer', args=[self.app.id])
+        resp_accept = csrf_client.post(accept_url)
+        self.assertEqual(resp_accept.status_code, 403)
+
+        decline_url = reverse('students:decline_offer', args=[self.app.id])
+        resp_decline = csrf_client.post(decline_url)
+        self.assertEqual(resp_decline.status_code, 403)
+
+
+class InternshipDiscoveryAndFilterTests(TestCase):
+    def setUp(self):
+        self.college = College.objects.create(name="Herald College")
+        self.cat_web = Category.objects.create(name="Web Development")
+        self.cat_data = Category.objects.create(name="Data Science")
+
+        self.skill_python = Skill.objects.create(name="Python", category=self.cat_web)
+        self.skill_django = Skill.objects.create(name="Django", category=self.cat_web)
+        self.skill_react = Skill.objects.create(name="React", category=self.cat_web)
+        self.skill_sql = Skill.objects.create(name="SQL", category=self.cat_data)
+
+        # Company 1 (Kathmandu, TechCorp)
+        self.company1_user = User.objects.create_user(
+            email="company1@test.local", password="Password123!", role="company", status="active"
+        )
+        self.company1_profile = CompanyProfile.objects.create(
+            user=self.company1_user, organization_name="TechCorp Nepal", contact_person="Ramesh",
+            industry="IT", hq_location="Kathmandu"
+        )
+
+        # Company 2 (Pokhara, DataHub)
+        self.company2_user = User.objects.create_user(
+            email="company2@test.local", password="Password123!", role="company", status="active"
+        )
+        self.company2_profile = CompanyProfile.objects.create(
+            user=self.company2_user, organization_name="DataHub Pokhara", contact_person="Sita",
+            industry="Data Analytics", hq_location="Pokhara"
+        )
+
+        # Listing 1: Django Backend, Remote, Paid (15000), 3 months
+        self.listing_django = Internship.objects.create(
+            company=self.company1_profile, title="Django Backend Intern", description="Building REST APIs with Django",
+            category=self.cat_web, location_type="remote", stipend=15000,
+            deadline=date.today() + timedelta(days=30), total_positions=2, expected_duration="3 months", status="approved"
+        )
+        InternshipSkill.objects.create(internship=self.listing_django, skill=self.skill_python, is_required=True)
+        InternshipSkill.objects.create(internship=self.listing_django, skill=self.skill_django, is_required=True)
+
+        # Listing 2: React Frontend, Onsite, Unpaid, 6 months
+        self.listing_react = Internship.objects.create(
+            company=self.company1_profile, title="React Frontend Intern", description="Building modern SPAs",
+            category=self.cat_web, location_type="onsite", stipend=None,
+            deadline=date.today() + timedelta(days=20), total_positions=1, expected_duration="6 months", status="approved"
+        )
+        InternshipSkill.objects.create(internship=self.listing_react, skill=self.skill_react, is_required=True)
+
+        # Listing 3: Data Analyst, Hybrid, Paid (20000), 3 months
+        self.listing_data = Internship.objects.create(
+            company=self.company2_profile, title="Data Analyst Intern", description="Data wrangling and reporting",
+            category=self.cat_data, location_type="hybrid", stipend=20000,
+            deadline=date.today() + timedelta(days=25), total_positions=3, expected_duration="3 months", status="approved"
+        )
+        InternshipSkill.objects.create(internship=self.listing_data, skill=self.skill_sql, is_required=True)
+        InternshipSkill.objects.create(internship=self.listing_data, skill=self.skill_python, is_required=False)
+
+        # Student User with Python and Django skills
+        self.student = User.objects.create_user(
+            email="filter_student@test.local", password="Password123!", role="student", status="active"
+        )
+        self.student_profile = StudentProfile.objects.create(
+            user=self.student, college=self.college, department="BIM", semester=6, college_verified=True
+        )
+        StudentSkill.objects.create(student=self.student, skill=self.skill_python)
+        StudentSkill.objects.create(student=self.student, skill=self.skill_django)
+
+    def test_keyword_search_filter(self):
+        """Keyword search matches title, description, and company name."""
+        url = reverse('students:browse_internships')
+        # Search by title keyword
+        resp = self.client.get(url, {'q': 'Django'})
+        self.assertContains(resp, "Django Backend Intern")
+        self.assertNotContains(resp, "React Frontend Intern")
+        self.assertNotContains(resp, "Data Analyst Intern")
+
+        # Search by company name
+        resp2 = self.client.get(url, {'q': 'DataHub'})
+        self.assertContains(resp2, "Data Analyst Intern")
+        self.assertNotContains(resp2, "Django Backend Intern")
+
+    def test_category_and_skill_filters(self):
+        """Filter by Category ID and Skill ID."""
+        url = reverse('students:browse_internships')
+        # Category filter
+        resp_cat = self.client.get(url, {'category': self.cat_data.id})
+        self.assertContains(resp_cat, "Data Analyst Intern")
+        self.assertNotContains(resp_cat, "Django Backend Intern")
+
+        # Required skill filter
+        resp_skill = self.client.get(url, {'skill': self.skill_react.id})
+        self.assertContains(resp_skill, "React Frontend Intern")
+        self.assertNotContains(resp_skill, "Django Backend Intern")
+
+    def test_location_and_arrangement_filters(self):
+        """Filter by city location and arrangement (remote, onsite, hybrid)."""
+        url = reverse('students:browse_internships')
+        resp_loc = self.client.get(url, {'location': 'Pokhara'})
+        self.assertContains(resp_loc, "DataHub Pokhara")
+        self.assertNotContains(resp_loc, "TechCorp Nepal")
+
+        resp_type = self.client.get(url, {'location_type': 'remote'})
+        self.assertContains(resp_type, "Django Backend Intern")
+        self.assertNotContains(resp_type, "React Frontend Intern")
+
+    def test_compensation_and_duration_filters(self):
+        """Filter by paid/unpaid status, min_stipend, and duration."""
+        url = reverse('students:browse_internships')
+        # Paid only
+        resp_paid = self.client.get(url, {'paid': 'paid'})
+        self.assertContains(resp_paid, "Django Backend Intern")
+        self.assertContains(resp_paid, "Data Analyst Intern")
+        self.assertNotContains(resp_paid, "React Frontend Intern")
+
+        # Unpaid only
+        resp_unpaid = self.client.get(url, {'paid': 'unpaid'})
+        self.assertContains(resp_unpaid, "React Frontend Intern")
+        self.assertNotContains(resp_unpaid, "Django Backend Intern")
+
+        # Min stipend: 18000 (Data Analyst is 20000, Django is 15000)
+        resp_stipend = self.client.get(url, {'min_stipend': '18000'})
+        self.assertContains(resp_stipend, "Data Analyst Intern")
+        self.assertNotContains(resp_stipend, "Django Backend Intern")
+
+        # Duration filter
+        resp_dur = self.client.get(url, {'duration': '6 months'})
+        self.assertContains(resp_dur, "React Frontend Intern")
+        self.assertNotContains(resp_dur, "Django Backend Intern")
+
+    def test_combined_filters_work_together(self):
+        """Multiple filters combined refine the result set correctly."""
+        url = reverse('students:browse_internships')
+        resp = self.client.get(url, {
+            'q': 'Intern',
+            'location_type': 'remote',
+            'paid': 'paid',
+            'min_stipend': '10000',
+        })
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Django Backend Intern")
+        self.assertNotContains(resp, "React Frontend Intern")
+        self.assertNotContains(resp, "Data Analyst Intern")
+
+    def test_empty_results_and_reset_link(self):
+        """When filters match nothing, a clear empty state and reset button are rendered."""
+        url = reverse('students:browse_internships')
+        resp = self.client.get(url, {'q': 'NonExistentSkillSearch'})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "No internships matched your search criteria")
+        self.assertContains(resp, "Reset All Filters")
+
+    def test_student_minimum_match_filter(self):
+        """Logged-in student can filter internships by minimum match percentage."""
+        self.client.login(email=self.student.email, password="Password123!")
+        url = reverse('students:browse_internships')
+
+        # Student has Python + Django -> Django listing is 100%, Data Analyst has SQL (Req) + Python (Pref) -> 1.0/3.0 = 33.33%
+        # Filter for min_match=70
+        resp = self.client.get(url, {'min_match': '70'})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Django Backend Intern")
+        self.assertNotContains(resp, "Data Analyst Intern")
+        self.assertNotContains(resp, "React Frontend Intern")
+
+    def test_guest_can_browse_with_filters(self):
+        """Guest browsing handles filters properly without errors."""
+        url = reverse('students:browse_internships')
+        resp = self.client.get(url, {'location_type': 'onsite'})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "React Frontend Intern")
+
+
+class StudentPlacementDashboardTests(TestCase):
+    def setUp(self):
+        self.college = College.objects.create(name="Apex College")
+        self.cat = Category.objects.create(name="Software")
+        self.skill_py = Skill.objects.create(name="Python", category=self.cat)
+        self.skill_dj = Skill.objects.create(name="Django", category=self.cat)
+
+        self.student = User.objects.create_user(
+            email="dash_student@test.local", password="Password123!", role="student", status="active"
+        )
+        self.student_profile = StudentProfile.objects.create(
+            user=self.student, college=self.college, department="BIM", semester=6, college_verified=True
+        )
+        StudentSkill.objects.create(student=self.student, skill=self.skill_py)
+        StudentSkill.objects.create(student=self.student, skill=self.skill_dj)
+
+        # Other student
+        self.other_student = User.objects.create_user(
+            email="other_dash@test.local", password="Password123!", role="student", status="active"
+        )
+        StudentProfile.objects.create(
+            user=self.other_student, college=self.college, department="BIM", semester=6, college_verified=True
+        )
+
+        # Company & Listings
+        self.comp_user = User.objects.create_user(
+            email="dash_comp@test.local", password="Password123!", role="company", status="active"
+        )
+        self.comp_profile = CompanyProfile.objects.create(
+            user=self.comp_user, organization_name="Alpha Tech", contact_person="John",
+            industry="IT", hq_location="Kathmandu"
+        )
+        self.internship1 = Internship.objects.create(
+            company=self.comp_profile, title="Python Engineer", category=self.cat, location_type="remote",
+            deadline=date.today() + timedelta(days=30), total_positions=2, expected_duration="3 months", status="approved"
+        )
+        InternshipSkill.objects.create(internship=self.internship1, skill=self.skill_py, is_required=True)
+
+        self.internship2 = Internship.objects.create(
+            company=self.comp_profile, title="Django Specialist", category=self.cat, location_type="remote",
+            deadline=date.today() + timedelta(days=30), total_positions=2, expected_duration="3 months", status="approved"
+        )
+        InternshipSkill.objects.create(internship=self.internship2, skill=self.skill_dj, is_required=True)
+
+        self.internship3 = Internship.objects.create(
+            company=self.comp_profile, title="Fullstack Role", category=self.cat, location_type="remote",
+            deadline=date.today() + timedelta(days=30), total_positions=2, expected_duration="3 months", status="approved"
+        )
+
+    def test_dashboard_application_counts_by_status(self):
+        """Dashboard displays exact counts for total, pending, offers, accepted, and rejected."""
+        # Create applications with distinct statuses
+        Application.objects.create(student=self.student, internship=self.internship1, status='pending', match_score=100.0)
+        Application.objects.create(student=self.student, internship=self.internship2, status='offer_issued', match_score=100.0)
+        Application.objects.create(student=self.student, internship=self.internship3, status='rejected', match_score=60.0)
+
+        # Another student application (should NOT be counted)
+        Application.objects.create(student=self.other_student, internship=self.internship1, status='accepted', match_score=100.0)
+
+        self.client.login(email=self.student.email, password="Password123!")
+        response = self.client.get(reverse('students:dashboard'))
+        self.assertEqual(response.status_code, 200)
+
+        self.assertEqual(response.context['total_applications'], 3)
+        self.assertEqual(response.context['pending_applications'], 1)
+        self.assertEqual(response.context['offers_received'], 1)
+        self.assertEqual(response.context['accepted_offers'], 0)
+        self.assertEqual(response.context['rejected_applications'], 1)
+
+    def test_dashboard_data_belongs_only_to_authenticated_student(self):
+        """Applications of another user are completely isolated from student's dashboard."""
+        Application.objects.create(student=self.other_student, internship=self.internship1, status='pending', match_score=100.0)
+
+        self.client.login(email=self.student.email, password="Password123!")
+        response = self.client.get(reverse('students:dashboard'))
+        self.assertEqual(response.context['total_applications'], 0)
+        self.assertEqual(len(response.context['applications']), 0)
+
+    def test_empty_dashboard_works_correctly(self):
+        """Student with no applications sees zero counts and empty state without errors."""
+        self.client.login(email=self.student.email, password="Password123!")
+        response = self.client.get(reverse('students:dashboard'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['total_applications'], 0)
+        self.assertContains(response, "No applications yet")
+
+    def test_dashboard_active_offer_banner_displayed(self):
+        """When an application has status 'offer_issued', an action banner is rendered."""
+        app = Application.objects.create(student=self.student, internship=self.internship1, status='offer_issued', match_score=100.0)
+
+        self.client.login(email=self.student.email, password="Password123!")
+        response = self.client.get(reverse('students:dashboard'))
+        self.assertContains(response, "You Have an Active Internship Offer!")
+        self.assertContains(response, reverse('students:view_offer', args=[app.id]))
+
+    def test_dashboard_relevant_internships_displayed(self):
+        """Open internships where student meets threshold (>= 50%) are suggested."""
+        self.client.login(email=self.student.email, password="Password123!")
+        response = self.client.get(reverse('students:dashboard'))
+        self.assertEqual(response.status_code, 200)
+        # student has Python and Django skills; both internship1 and internship2 match 100%
+        self.assertIn('relevant_internships', response.context)
+        self.assertGreaterEqual(len(response.context['relevant_internships']), 1)
+        self.assertContains(response, "Recommended Internships for You")
+
+
+class DocumentSecurityAccessTests(TestCase):
+    def setUp(self):
+        self.college = College.objects.create(name="Prime College")
+        self.category = Category.objects.create(name="IT")
+
+        # Student A with CV
+        self.student_a = User.objects.create_user(
+            email="doc_student_a@test.local", password="Password123!", role="student", status="active"
+        )
+        self.cv_content_a = b"%PDF-1.4 Mock CV Content Student A"
+        self.profile_a = StudentProfile.objects.create(
+            user=self.student_a, college=self.college, department="BIM", semester=6, college_verified=True,
+            cv_file=SimpleUploadedFile("student_a_cv.pdf", self.cv_content_a, content_type="application/pdf")
+        )
+
+        # Student B with CV
+        self.student_b = User.objects.create_user(
+            email="doc_student_b@test.local", password="Password123!", role="student", status="active"
+        )
+        self.cv_content_b = b"%PDF-1.4 Mock CV Content Student B"
+        self.profile_b = StudentProfile.objects.create(
+            user=self.student_b, college=self.college, department="BIM", semester=6, college_verified=True,
+            cv_file=SimpleUploadedFile("student_b_cv.pdf", self.cv_content_b, content_type="application/pdf")
+        )
+
+        # Admin user
+        self.admin_user = User.objects.create_superuser(
+            email="doc_admin@test.local", password="AdminPassword123!"
+        )
+
+        # Company and Application with Offer Letter for Student A
+        self.company_user = User.objects.create_user(
+            email="doc_comp@test.local", password="Password123!", role="company", status="active"
+        )
+        self.company_profile = CompanyProfile.objects.create(
+            user=self.company_user, organization_name="DocCorp", contact_person="Manager",
+            industry="IT", hq_location="Kathmandu"
+        )
+        self.internship = Internship.objects.create(
+            company=self.company_profile, title="Backend Intern", category=self.category,
+            location_type="remote", deadline=date.today() + timedelta(days=20),
+            total_positions=2, expected_duration="3 months", status="approved"
+        )
+        self.offer_content = b"%PDF-1.4 Mock Offer Letter Content"
+        self.app_a = Application.objects.create(
+            student=self.student_a, internship=self.internship, status="offer_issued", match_score=80.0,
+            offer_letter=SimpleUploadedFile("offer_letter_a.pdf", self.offer_content, content_type="application/pdf")
+        )
+
+    def test_direct_public_media_urls_blocked_for_private_documents(self):
+        """Direct requests to /media/cvs/ and /media/offer_letters/ return 404 (not exposed publicly)."""
+        resp_cv = self.client.get("/media/cvs/student_a_cv.pdf")
+        self.assertEqual(resp_cv.status_code, 404)
+
+        resp_offer = self.client.get("/media/offer_letters/offer_letter_a.pdf")
+        self.assertEqual(resp_offer.status_code, 404)
+
+    def test_student_can_access_own_cv(self):
+        """Student can view their own CV through authenticated endpoint."""
+        self.client.login(email=self.student_a.email, password="Password123!")
+
+        # Via /student/cv/
+        resp_my = self.client.get(reverse('students:view_my_cv'))
+        self.assertEqual(resp_my.status_code, 200)
+        self.assertEqual(b"".join(resp_my.streaming_content), self.cv_content_a)
+
+        # Via /student/cv/<id>/
+        resp_id = self.client.get(reverse('students:view_cv', args=[self.student_a.id]))
+        self.assertEqual(resp_id.status_code, 200)
+        self.assertEqual(b"".join(resp_id.streaming_content), self.cv_content_a)
+
+    def test_student_cannot_access_other_student_cv(self):
+        """Student cannot access another student's CV (returns 403 Forbidden)."""
+        self.client.login(email=self.student_a.email, password="Password123!")
+        resp = self.client.get(reverse('students:view_cv', args=[self.student_b.id]))
+        self.assertEqual(resp.status_code, 403)
+
+    def test_student_can_access_own_offer_letter(self):
+        """Student can view offer letter belonging to their application."""
+        self.client.login(email=self.student_a.email, password="Password123!")
+        url = reverse('students:view_offer_letter', args=[self.app_a.id])
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(b"".join(resp.streaming_content), self.offer_content)
+
+    def test_student_cannot_access_other_student_offer_letter(self):
+        """Student cannot view another student's offer letter (returns 403 Forbidden)."""
+        self.client.login(email=self.student_b.email, password="Password123!")
+        url = reverse('students:view_offer_letter', args=[self.app_a.id])
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 403)
+
+    def test_unauthenticated_user_redirected_to_login(self):
+        """Unauthenticated requests to private documents redirect to login."""
+        resp_cv = self.client.get(reverse('students:view_cv', args=[self.student_a.id]))
+        self.assertRedirects(resp_cv, f"/login/?next=/student/cv/{self.student_a.id}/")
+
+        resp_offer = self.client.get(reverse('students:view_offer_letter', args=[self.app_a.id]))
+        self.assertRedirects(resp_offer, f"/login/?next=/student/applications/{self.app_a.id}/offer-letter/")
+
+    def test_admin_can_access_any_cv_and_offer_letter(self):
+        """Administrators can access any student's CV and any application's offer letter."""
+        self.client.login(email=self.admin_user.email, password="AdminPassword123!")
+
+        resp_cv = self.client.get(reverse('students:view_cv', args=[self.student_a.id]))
+        self.assertEqual(resp_cv.status_code, 200)
+
+        resp_offer = self.client.get(reverse('students:view_offer_letter', args=[self.app_a.id]))
+        self.assertEqual(resp_offer.status_code, 200)
+
+
+
+
 
 
 

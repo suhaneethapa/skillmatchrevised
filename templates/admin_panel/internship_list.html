@@ -39,9 +39,28 @@
                 <td>{{ i.deadline }}</td>
                 <td>
                     {% if i.status == 'pending' %}
-                    <a href="{% url 'admin_panel:approve_internship' i.id %}" class="sm-btn sm-btn-success sm-btn-sm">Approve</a>
+                        <form method="post" action="{% url 'admin_panel:approve_internship' i.id %}" style="display: inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="approve">
+                            <button type="submit" class="sm-btn sm-btn-success sm-btn-sm">Approve</button>
+                        </form>
+                        <form method="post" action="{% url 'admin_panel:approve_internship' i.id %}" style="display: inline; margin-left: 4px;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="reject">
+                            <button type="submit" class="sm-btn sm-btn-danger-outline sm-btn-sm">Reject</button>
+                        </form>
                     {% elif i.status == 'approved' %}
-                    <a href="{% url 'admin_panel:approve_internship' i.id %}" class="sm-btn sm-btn-danger-outline sm-btn-sm">Reject</a>
+                        <form method="post" action="{% url 'admin_panel:approve_internship' i.id %}" style="display: inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="reject">
+                            <button type="submit" class="sm-btn sm-btn-danger-outline sm-btn-sm">Reject</button>
+                        </form>
+                    {% elif i.status == 'rejected' %}
+                        <form method="post" action="{% url 'admin_panel:approve_internship' i.id %}" style="display: inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="approve">
+                            <button type="submit" class="sm-btn sm-btn-success sm-btn-sm">Approve</button>
+                        </form>
                     {% endif %}
                 </td>
             </tr>

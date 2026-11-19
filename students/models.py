@@ -97,17 +97,17 @@ class Application(models.Model):
         """Returns True if the current match score is below the 50% eligibility threshold."""
         return float(self.match_score) < 50.0
 
-    def compute_current_match(self):
+    def compute_current_match(self, save=False):
         """
         Recomputes live match score based on candidate's current skills.
-        Updates self.match_score if changed, and returns (score, is_below_threshold).
+        Updates self.match_score in-memory, and only saves to database if save=True.
         """
         from matching.engine import compute_match_score
         student_skills = set(self.student.student_skills.values_list('skill__name', flat=True))
         req_skills = list(self.internship.internship_skills.values_list('skill__name', 'is_required'))
         score, gap = compute_match_score(student_skills, req_skills)
-        if float(self.match_score) != score:
-            self.match_score = score
+        self.match_score = score
+        if save:
             self.save(update_fields=['match_score'])
         return score, (score < 50.0)
 

@@ -24,20 +24,87 @@
     </div>
 </div>
 
-<!-- Quick Stats -->
-<div class="sm-grid cols-3" style="margin-bottom: 20px;">
-    <div class="sm-card stat-card">
-        <div class="stat-number">{{ applications|length }}</div>
-        <div class="stat-label">My Applications</div>
-    </div>
-    <div class="sm-card stat-card">
-        <div class="stat-number">{{ skills_count|default:0 }}</div>
-        <div class="stat-label">Skills Listed</div>
-    </div>
-    <div class="sm-card stat-card" style="display: flex; align-items: center;">
-        <a href="{% url 'students:browse_internships' %}" class="sm-btn sm-btn-primary sm-btn-block">Browse Internships</a>
+<!-- Outstanding Offer Notification Banner -->
+{% if active_offers %}
+<div class="sm-card sm-card-pad" style="margin-bottom: 20px; border-left: 4px solid var(--sm-success); background: #f0fdf4;">
+    <div class="sm-flex-between" style="align-items: center; flex-wrap: wrap; gap: 12px;">
+        <div>
+            <h5 style="color: #166534; margin-bottom: 4px;">&check; You Have an Active Internship Offer!</h5>
+            <p style="margin: 0; color: #15803d; font-size: 0.92rem;">
+                Congratulations! You received an offer for <strong>{{ active_offers.0.internship.title }}</strong> from <strong>{{ active_offers.0.internship.company.organization_name }}</strong>.
+            </p>
+        </div>
+        <div>
+            <a href="{% url 'students:view_offer' active_offers.0.id %}" class="sm-btn sm-btn-success">Review & Respond to Offer &rarr;</a>
+        </div>
     </div>
 </div>
+{% endif %}
+
+<!-- Quick Stats (Database-Driven Placement Metrics) -->
+<div class="sm-grid cols-5" style="margin-bottom: 20px; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));">
+    <div class="sm-card stat-card">
+        <div class="stat-number">{{ total_applications }}</div>
+        <div class="stat-label">Total Applied</div>
+    </div>
+    <div class="sm-card stat-card">
+        <div class="stat-number">{{ pending_applications }}</div>
+        <div class="stat-label">Pending Review</div>
+    </div>
+    <div class="sm-card stat-card" {% if offers_received > 0 %}style="border-color: #86efac; background: #f0fdf4;"{% endif %}>
+        <div class="stat-number" {% if offers_received > 0 %}style="color: #16a34a;"{% endif %}>{{ offers_received }}</div>
+        <div class="stat-label">Offers Received</div>
+    </div>
+    <div class="sm-card stat-card" {% if accepted_offers > 0 %}style="border-color: #86efac; background: #f0fdf4;"{% endif %}>
+        <div class="stat-number" {% if accepted_offers > 0 %}style="color: #16a34a;"{% endif %}>{{ accepted_offers }}</div>
+        <div class="stat-label">Placed / Accepted</div>
+    </div>
+    <div class="sm-card stat-card">
+        <div class="stat-number">{{ rejected_applications }}</div>
+        <div class="stat-label">Rejected</div>
+    </div>
+</div>
+
+<!-- Relevant Matched Internships (Eligibility >= 50%) -->
+{% if relevant_internships %}
+<div class="sm-card" style="margin-bottom: 24px;">
+    <div class="sm-card-header">
+        <div>
+            <h5 style="margin-bottom: 2px;">Recommended Internships for You</h5>
+            <p class="sm-muted sm-small" style="margin: 0;">Open listings where your skills meet the 50% application threshold</p>
+        </div>
+        <a href="{% url 'students:browse_internships' %}" class="sm-btn sm-btn-outline sm-btn-sm">Browse All</a>
+    </div>
+    <div class="sm-card-body" style="padding: 12px 16px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;">
+            {% for item in relevant_internships %}
+            <div style="border: 1px solid var(--sm-border); border-radius: var(--sm-radius-sm); padding: 12px; display: flex; flex-direction: column; justify-content: space-between; background: var(--sm-card-bg);">
+                <div>
+                    <div class="sm-flex-between" style="align-items: flex-start; gap: 8px; margin-bottom: 6px;">
+                        <a href="{% url 'students:internship_detail' item.internship.id %}" style="font-weight: 600; color: var(--sm-text); text-decoration: none; font-size: 0.95rem;">
+                            {{ item.internship.title }}
+                        </a>
+                        <span class="match-pill {% if item.score >= 70 %}match-high{% elif item.score >= 50 %}match-mid{% else %}match-low{% endif %}" style="font-size: 0.82rem;">
+                            {{ item.score }}%
+                        </span>
+                    </div>
+                    <p class="sm-muted sm-small" style="margin: 0 0 8px 0;">
+                        {{ item.internship.company.organization_name }} &middot; {{ item.internship.location_type|title }}
+                    </p>
+                    <div style="font-size: 0.78rem; color: var(--sm-text-muted); margin-bottom: 10px;">
+                        Matched: {{ item.match.matched_required|length }}/{{ item.match.total_required }} required
+                    </div>
+                </div>
+                <div class="sm-flex-between" style="align-items: center; border-top: 1px solid var(--sm-border); padding-top: 8px; margin-top: 4px;">
+                    <span class="sm-muted sm-small">Deadline: {{ item.internship.deadline|date:"M d" }}</span>
+                    <a href="{% url 'students:internship_detail' item.internship.id %}" class="sm-btn sm-btn-primary sm-btn-sm" style="padding: 3px 8px; font-size: 0.8rem;">View & Apply</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <!-- My Applications Section -->
 <div class="sm-card">
@@ -51,7 +118,11 @@
             <div class="sm-list-item">
                 <div class="sm-flex-top">
                     <div>
-                        <h6 style="margin-bottom: 2px;">{{ app.internship.title }}</h6>
+                        <h6 style="margin-bottom: 2px;">
+                            <a href="{% url 'students:internship_detail' app.internship.id %}" style="color: inherit; text-decoration: none;">
+                                {{ app.internship.title }}
+                            </a>
+                        </h6>
                         <p class="sm-muted sm-small" style="margin: 0;">{{ app.internship.company.organization_name }}</p>
                     </div>
                     <div class="sm-flex-center">

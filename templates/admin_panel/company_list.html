@@ -36,9 +36,12 @@
                 </td>
                 <td>{{ c.internships.count }}</td>
                 <td>
-                    <a href="{% url 'admin_panel:suspend_company' c.id %}" class="sm-btn sm-btn-sm {% if c.suspended %}sm-btn-success{% else %}sm-btn-danger-outline{% endif %}">
-                        {% if c.suspended %}Reinstate{% else %}Suspend{% endif %}
-                    </a>
+                    <form method="post" action="{% url 'admin_panel:suspend_company' c.id %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="sm-btn sm-btn-sm {% if c.suspended %}sm-btn-success{% else %}sm-btn-danger-outline{% endif %}">
+                            {% if c.suspended %}Reinstate{% else %}Suspend{% endif %}
+                        </button>
+                    </form>
                 </td>
             </tr>
             {% empty %}

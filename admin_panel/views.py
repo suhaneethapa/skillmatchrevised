@@ -2,6 +2,7 @@ import csv
 import json
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse
+from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.contrib.sessions.models import Session
 from accounts.models import User
@@ -92,17 +93,31 @@ def user_list(request):
 
 
 @admin_required
+@require_POST
 def toggle_user_status(request, user_id):
     user = get_object_or_404(User, id=user_id)
-    if user.status == 'active':
+    if user.status == 'pending_email':
+        messages.warning(request, f"User {user.email} cannot be activated until their email address has been verified.")
+        return redirect('admin_panel:user_list')
+    elif user.status == 'active':
         user.status = 'suspended'
         invalidate_user_sessions(user)
-    elif user.status == 'suspended':
+    elif user.status in ['suspended', 'pending_admin']:
         user.status = 'active'
-    elif user.status == 'pending_admin':
-        user.status = 'active'
-    user.save()
+    user.save(update_fields=['status'])
     messages.success(request, f"User {user.email} status updated to {user.status}")
+    return redirect('admin_panel:user_list')
+
+
+@admin_required
+@require_POST
+def verify_student_college(request, user_id):
+    user = get_object_or_404(User, id=user_id, role='student')
+    profile = user.student_profile
+    profile.college_verified = not profile.college_verified
+    profile.save(update_fields=['college_verified'])
+    action = "verified" if profile.college_verified else "unverified"
+    messages.success(request, f"College affiliation for student {user.email} marked as {action}.")
     return redirect('admin_panel:user_list')
 
 
@@ -120,18 +135,25 @@ def internship_list(request):
 
 
 @admin_required
+@require_POST
 def approve_internship(request, internship_id):
     internship = get_object_or_404(Internship, id=internship_id)
-    if internship.status == 'pending':
-        internship.status = 'approved'
-        internship.save()
-        notify_listing_moderation(internship, 'approved')
-        messages.success(request, f"Internship '{internship.title}' approved.")
-    elif internship.status == 'approved':
+    action = request.POST.get('action')
+    if action not in ['approve', 'reject']:
+        messages.error(request, f"Invalid moderation action '{action}'. Must be 'approve' or 'reject'.")
+        return redirect('admin_panel:internship_list')
+
+    if action == 'reject':
         internship.status = 'rejected'
-        internship.save()
+        internship.save(update_fields=['status'])
         notify_listing_moderation(internship, 'rejected')
         messages.success(request, f"Internship '{internship.title}' rejected.")
+    elif action == 'approve':
+        internship.status = 'approved'
+        internship.save(update_fields=['status'])
+        notify_listing_moderation(internship, 'approved')
+        messages.success(request, f"Internship '{internship.title}' approved.")
+
     return redirect('admin_panel:internship_list')
 
 
@@ -181,12 +203,13 @@ def company_list(request):
 
 
 @admin_required
+@require_POST
 def suspend_company(request, company_id):
     company = get_object_or_404(CompanyProfile, id=company_id)
     company.suspended = not company.suspended
     if company.suspended:
         invalidate_user_sessions(company.user)
-    company.save()
+    company.save(update_fields=['suspended'])
     action = "suspended" if company.suspended else "reinstated"
     messages.success(request, f"Company '{company.organization_name}' {action}.")
     return redirect('admin_panel:company_list')

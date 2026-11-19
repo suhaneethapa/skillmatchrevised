@@ -16,4 +16,7 @@ urlpatterns = [
     path('offer/<int:application_id>/', views.view_offer, name='view_offer'),
     path('offer/<int:application_id>/accept/', views.accept_offer, name='accept_offer'),
     path('offer/<int:application_id>/decline/', views.decline_offer, name='decline_offer'),
+    path('cv/<int:student_id>/', views.view_cv, name='view_cv'),
+    path('cv/', views.view_my_cv, name='view_my_cv'),
+    path('applications/<int:application_id>/offer-letter/', views.view_offer_letter, name='view_offer_letter'),
 ]

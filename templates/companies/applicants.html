@@ -5,29 +5,94 @@
 {% block content %}
 <div class="sm-page">
     <div class="sm-section-header">
-        <h4 class="sm-section-title">Applicants: {{ internship.title }}</h4>
-        <a href="{% url 'companies:view_applicants' internship.id %}" class="sm-btn sm-btn-outline sm-btn-sm">Refresh</a>
+        <div>
+            <h4 class="sm-section-title" style="margin-bottom: 2px;">Applicants: {{ internship.title }}</h4>
+            <span class="sm-page-sub">{{ applications|length }} candidate{{ applications|pluralize }} found</span>
+        </div>
+        <div class="sm-actions">
+            <a href="{% url 'companies:my_listings' %}" class="sm-btn sm-btn-outline sm-btn-sm">&larr; My Listings</a>
+            <a href="{% url 'companies:view_applicants' internship.id %}" class="sm-btn sm-btn-outline sm-btn-sm">Refresh</a>
+        </div>
+    </div>
+
+    <!-- Candidate Screening & Filtering Bar -->
+    <div class="sm-card sm-card-pad" style="margin-bottom: 20px;">
+        <form method="get" action="{% url 'companies:view_applicants' internship.id %}">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; align-items: flex-end;">
+                <!-- Status Filter -->
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--sm-text-muted); display: block; margin-bottom: 4px;">Application Status</label>
+                    <select name="status" class="sm-select" style="padding: 6px 10px; font-size: 0.88rem;">
+                        <option value="">All Statuses</option>
+                        {% for val, label in status_choices %}
+                            <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Minimum Match % -->
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--sm-text-muted); display: block; margin-bottom: 4px;">Min Match %</label>
+                    <select name="min_match" class="sm-select" style="padding: 6px 10px; font-size: 0.88rem;">
+                        <option value="">Any Match %</option>
+                        <option value="50" {% if min_match_filter == '50' %}selected{% endif %}>&ge; 50% (Meets Threshold)</option>
+                        <option value="70" {% if min_match_filter == '70' %}selected{% endif %}>&ge; 70% (Strong Match)</option>
+                        <option value="90" {% if min_match_filter == '90' %}selected{% endif %}>&ge; 90% (Top Match)</option>
+                    </select>
+                </div>
+
+                <!-- Sort By -->
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--sm-text-muted); display: block; margin-bottom: 4px;">Sort By</label>
+                    <select name="sort" class="sm-select" style="padding: 6px 10px; font-size: 0.88rem;">
+                        <option value="match_desc" {% if sort_by == 'match_desc' %}selected{% endif %}>Match Score (Highest First)</option>
+                        <option value="match_asc" {% if sort_by == 'match_asc' %}selected{% endif %}>Match Score (Lowest First)</option>
+                        <option value="date_desc" {% if sort_by == 'date_desc' %}selected{% endif %}>Applied Date (Newest First)</option>
+                        <option value="date_asc" {% if sort_by == 'date_asc' %}selected{% endif %}>Applied Date (Oldest First)</option>
+                        <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Candidate Email (A-Z)</option>
+                    </select>
+                </div>
+
+                <!-- Action Buttons -->
+                <div style="display: flex; gap: 8px;">
+                    <button type="submit" class="sm-btn sm-btn-primary sm-btn-sm" style="flex: 1;">Filter</button>
+                    {% if status_filter or min_match_filter or sort_by != 'match_desc' %}
+                        <a href="{% url 'companies:view_applicants' internship.id %}" class="sm-btn sm-btn-outline sm-btn-sm">Reset</a>
+                    {% endif %}
+                </div>
+            </div>
+        </form>
     </div>
 
     {% if applications %}
         <div class="sm-table-wrap">
-            <table class="sm-table" style="min-width: 860px;">
+            <table class="sm-table" style="min-width: 900px;">
                 <thead>
                     <tr>
                         <th>Rank</th>
                         <th>Student</th>
                         <th>Match Score</th>
+                        <th>Skill Alignment</th>
                         <th>Status</th>
                         <th>Applied</th>
                         <th>CV</th>
-                        <th>Action</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for app in applications %}
                     <tr>
                         <td style="font-weight: 700; color: var(--sm-text-muted);">{{ forloop.counter }}</td>
-                        <td>{{ app.student.email }}</td>
+                        <td>
+                            <a href="{% url 'companies:applicant_detail' app.id %}" style="font-weight: 600; color: inherit; text-decoration: none;">
+                                {{ app.student.email }}
+                            </a>
+                            {% if app.student.student_profile %}
+                                <div style="font-size: 0.76rem; color: var(--sm-text-muted);">
+                                    {{ app.student.student_profile.college.name }} &middot; {{ app.student.student_profile.department }}
+                                </div>
+                            {% endif %}
+                        </td>
                         <td>
                             <span class="match-pill
                                 {% if app.match_score >= 70 %}match-high
@@ -39,6 +104,24 @@
                                 <div style="margin-top: 5px;">
                                     <span class="badge badge-danger">Below threshold &mdash; skills updated</span>
                                 </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if app.match_explanation %}
+                                <div style="font-size: 0.8rem; margin-bottom: 2px;">
+                                    <span style="color: #15803d; font-weight: 600;">{{ app.match_explanation.matched_required|length }}/{{ app.match_explanation.total_required }}</span> req. matched
+                                </div>
+                                {% if app.match_explanation.missing_required %}
+                                    <div style="font-size: 0.74rem; color: #b91c1c;">
+                                        Missing: {{ app.match_explanation.missing_required|join:", " }}
+                                    </div>
+                                {% else %}
+                                    <div style="font-size: 0.74rem; color: #15803d;">
+                                        &check; All required matched
+                                    </div>
+                                {% endif %}
+                            {% else %}
+                                <span class="sm-muted sm-small">&mdash;</span>
                             {% endif %}
                         </td>
                         <td>
@@ -55,27 +138,28 @@
                                         {{ app.rejection_reason }}
                                     </div>
                                 {% endif %}
+                            {% elif app.status == 'withdrawn' %}
+                                <span class="badge badge-muted">Withdrawn</span>
                             {% endif %}
                         </td>
                         <td style="color: var(--sm-text-muted);">{{ app.applied_at|date:"M d, Y" }}</td>
                         <td>
                             {% if app.student.student_profile.cv_file %}
-                                <a href="{{ app.student.student_profile.cv_file.url }}" target="_blank" class="sm-btn sm-btn-outline sm-btn-sm">View CV</a>
+                                <a href="{% url 'students:view_cv' app.student.id %}" target="_blank" class="sm-btn sm-btn-outline sm-btn-sm">View CV</a>
                             {% else %}
                                 <span class="badge badge-muted">No CV</span>
                             {% endif %}
                         </td>
                         <td>
-                            {% if app.status == 'pending' or app.status == 'offer_issued' %}
-                                <div class="sm-actions">
-                                    {% if app.status == 'pending' %}
-                                        <a href="{% url 'companies:issue_offer' app.id %}" class="sm-btn sm-btn-success sm-btn-sm">Issue Offer</a>
-                                    {% endif %}
+                            <div class="sm-actions">
+                                <a href="{% url 'companies:applicant_detail' app.id %}" class="sm-btn sm-btn-outline sm-btn-sm">Screen</a>
+                                {% if app.status == 'pending' %}
+                                    <a href="{% url 'companies:issue_offer' app.id %}" class="sm-btn sm-btn-success sm-btn-sm">Offer</a>
                                     <a href="{% url 'companies:reject_applicant' app.id %}" class="sm-btn sm-btn-danger-outline sm-btn-sm">Reject</a>
-                                </div>
-                            {% else %}
-                                <span class="sm-muted sm-small">&mdash;</span>
-                            {% endif %}
+                                {% elif app.status == 'offer_issued' %}
+                                    <a href="{% url 'companies:reject_applicant' app.id %}" class="sm-btn sm-btn-danger-outline sm-btn-sm">Revoke</a>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
@@ -85,8 +169,14 @@
     {% else %}
         <div class="sm-card">
             <div class="sm-empty">
-                <p class="sm-empty-title">No applicants yet</p>
-                <p class="sm-empty-text">No students have applied to this internship yet.</p>
+                {% if status_filter or min_match_filter %}
+                    <p class="sm-empty-title">No applicants match the selected criteria</p>
+                    <p class="sm-empty-text">No candidates match your current status or minimum match filters.</p>
+                    <a href="{% url 'companies:view_applicants' internship.id %}" class="sm-btn sm-btn-outline sm-btn-sm" style="margin-top: 8px;">Reset Filters</a>
+                {% else %}
+                    <p class="sm-empty-title">No applicants yet</p>
+                    <p class="sm-empty-text">No students have applied to this internship yet.</p>
+                {% endif %}
             </div>
         </div>
     {% endif %}

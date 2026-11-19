@@ -299,3 +299,21 @@ def notify_listing_moderation(internship, status):
         )
         send_notification_email(company_email, f"Listing Rejected: {title}", body)
 
+
+def notify_email_verification(user, verification_url):
+    """
+    Sends an academic plain-text email with verification URL to newly registered users.
+    Valid for 24 hours.
+    """
+    body = (
+        f"Dear User,\n\n"
+        f"Thank you for registering an account on SkillMatch.\n\n"
+        f"To complete your registration and submit your account for administrator review, "
+        f"please verify your email address by visiting the link below:\n\n"
+        f"{verification_url}\n\n"
+        f"This link is valid for 24 hours and can be used once.\n\n"
+        f"If you did not create an account on SkillMatch, please ignore this email."
+    )
+    send_notification_email(user.email, "Verify Your Email Address", body)
+
+

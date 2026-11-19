@@ -16,6 +16,98 @@
     </div>
     {% endif %}
 
+    <!-- Search & Filters -->
+    <div class="sm-card sm-card-pad" style="margin-bottom: 24px;">
+        <form method="get" action="{% url 'students:browse_internships' %}">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 12px;">
+                <!-- Keyword -->
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--sm-text-muted); display: block; margin-bottom: 4px;">Keywords</label>
+                    <input type="text" name="q" value="{{ q }}" placeholder="Title, description, company..." class="sm-input" style="padding: 6px 10px; font-size: 0.88rem;">
+                </div>
+
+                <!-- Category -->
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--sm-text-muted); display: block; margin-bottom: 4px;">Category</label>
+                    <select name="category" class="sm-select" style="padding: 6px 10px; font-size: 0.88rem;">
+                        <option value="">All Categories</option>
+                        {% for cat in categories %}
+                            <option value="{{ cat.id }}" {% if selected_category == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Required Skill -->
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--sm-text-muted); display: block; margin-bottom: 4px;">Required Skill</label>
+                    <select name="skill" class="sm-select" style="padding: 6px 10px; font-size: 0.88rem;">
+                        <option value="">All Skills</option>
+                        {% for sk in skills %}
+                            <option value="{{ sk.id }}" {% if selected_skill == sk.id|stringformat:"s" %}selected{% endif %}>{{ sk.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Location -->
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--sm-text-muted); display: block; margin-bottom: 4px;">Location</label>
+                    <input type="text" name="location" value="{{ selected_location }}" placeholder="e.g. Kathmandu, Lalitpur" class="sm-input" style="padding: 6px 10px; font-size: 0.88rem;">
+                </div>
+
+                <!-- Location Type -->
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--sm-text-muted); display: block; margin-bottom: 4px;">Arrangement</label>
+                    <select name="location_type" class="sm-select" style="padding: 6px 10px; font-size: 0.88rem;">
+                        <option value="">All Arrangements</option>
+                        <option value="remote" {% if selected_location_type == 'remote' %}selected{% endif %}>Remote</option>
+                        <option value="onsite" {% if selected_location_type == 'onsite' %}selected{% endif %}>Onsite</option>
+                        <option value="hybrid" {% if selected_location_type == 'hybrid' %}selected{% endif %}>Hybrid</option>
+                    </select>
+                </div>
+
+                <!-- Compensation -->
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--sm-text-muted); display: block; margin-bottom: 4px;">Compensation</label>
+                    <select name="paid" class="sm-select" style="padding: 6px 10px; font-size: 0.88rem;">
+                        <option value="">All Types</option>
+                        <option value="paid" {% if selected_paid == 'paid' %}selected{% endif %}>Paid Only</option>
+                        <option value="unpaid" {% if selected_paid == 'unpaid' %}selected{% endif %}>Unpaid</option>
+                    </select>
+                </div>
+
+                <!-- Min Stipend -->
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--sm-text-muted); display: block; margin-bottom: 4px;">Min Stipend (Rs.)</label>
+                    <input type="number" name="min_stipend" value="{{ selected_min_stipend }}" placeholder="e.g. 5000" min="0" step="1000" class="sm-input" style="padding: 6px 10px; font-size: 0.88rem;">
+                </div>
+
+                <!-- Duration -->
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--sm-text-muted); display: block; margin-bottom: 4px;">Duration</label>
+                    <input type="text" name="duration" value="{{ selected_duration }}" placeholder="e.g. 3 months" class="sm-input" style="padding: 6px 10px; font-size: 0.88rem;">
+                </div>
+
+                {% if is_student %}
+                <!-- Min Match Score (Student-only) -->
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--sm-text-muted); display: block; margin-bottom: 4px;">Min Match %</label>
+                    <select name="min_match" class="sm-select" style="padding: 6px 10px; font-size: 0.88rem;">
+                        <option value="">Any Match %</option>
+                        <option value="50" {% if selected_min_match == '50' %}selected{% endif %}>&ge; 50% (Eligible)</option>
+                        <option value="70" {% if selected_min_match == '70' %}selected{% endif %}>&ge; 70% (Strong Match)</option>
+                        <option value="90" {% if selected_min_match == '90' %}selected{% endif %}>&ge; 90% (Top Match)</option>
+                    </select>
+                </div>
+                {% endif %}
+            </div>
+
+            <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
+                <a href="{% url 'students:browse_internships' %}" class="sm-btn sm-btn-outline sm-btn-sm">Reset</a>
+                <button type="submit" class="sm-btn sm-btn-primary sm-btn-sm">Apply Filters</button>
+            </div>
+        </form>
+    </div>
+
     <!-- Internship Grid -->
     <div class="internship-grid">
         {% for item in listings %}
@@ -115,8 +207,9 @@
         {% empty %}
         <div class="internship-card" style="grid-column: 1 / -1;">
             <div class="sm-empty">
-                <p class="sm-empty-title">No internships available right now</p>
-                <p class="sm-empty-text">Check back later for new listings.</p>
+                <p class="sm-empty-title">No internships matched your search criteria</p>
+                <p class="sm-empty-text">No active listings match your current filters or eligibility threshold.</p>
+                <a href="{% url 'students:browse_internships' %}" class="sm-btn sm-btn-outline sm-btn-sm" style="margin-top: 10px;">Reset All Filters</a>
             </div>
         </div>
         {% endfor %}

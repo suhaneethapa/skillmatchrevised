@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}Account Status - SkillMatch{% endblock %}
+
+{% block content %}
+<div class="sm-narrow">
+    <div class="sm-card sm-card-pad">
+        {% if status == 'pending_email' %}
+            <div style="margin-bottom: 12px;">
+                <span class="sm-badge sm-badge-warning">Verification Required</span>
+            </div>
+            <h4 style="margin-bottom: 12px;">Email Verification Pending</h4>
+            <p class="sm-muted" style="margin-bottom: 16px;">
+                Your account has been registered, but your email address <strong>{{ user.email }}</strong> has not been verified yet.
+            </p>
+            <div class="sm-alert sm-alert-info" style="margin-bottom: 24px;">
+                Please check your email inbox and click the verification link we sent you. Once verified, your account will proceed to administrator review.
+            </div>
+        {% elif status == 'pending_admin' %}
+            <div style="margin-bottom: 12px;">
+                <span class="sm-badge sm-badge-info">Pending Approval</span>
+            </div>
+            <h4 style="margin-bottom: 12px;">Awaiting Administrator Approval</h4>
+            <p class="sm-muted" style="margin-bottom: 16px;">
+                Your email address (<strong>{{ user.email }}</strong>) has been verified. Your account is currently queued for administrator approval.
+            </p>
+            <div class="sm-alert sm-alert-info" style="margin-bottom: 24px;">
+                Placement features, dashboards, and profile editing will be unlocked as soon as an administrator reviews and approves your account.
+                {% if user.role == 'student' and not user.student_profile.college_verified %}
+                    <br><br><strong>Note:</strong> College affiliation verification is conducted separately by the administrator.
+                {% endif %}
+            </div>
+        {% elif status == 'rejected' %}
+            <div style="margin-bottom: 12px;">
+                <span class="sm-badge sm-badge-danger">Account Rejected</span>
+            </div>
+            <h4 style="margin-bottom: 12px; color: var(--sm-danger);">Registration Rejected</h4>
+            <p class="sm-muted" style="margin-bottom: 24px;">
+                Your account registration was reviewed and rejected by the administrator. Please contact your institution or SkillMatch administrator for further information.
+            </p>
+        {% else %}
+            <h4 style="margin-bottom: 12px;">Account Status</h4>
+            <p class="sm-muted" style="margin-bottom: 24px;">Your current status: {{ status }}</p>
+        {% endif %}
+
+        <form method="post" action="{% url 'accounts:logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="sm-btn sm-btn-outline sm-btn-block">Log Out</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

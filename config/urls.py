@@ -1,3 +1,4 @@
+import os
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
@@ -12,4 +13,8 @@ urlpatterns = [
 ]
 
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    # Public media serving only exposes public assets (e.g. company logos)
+    # Private documents (cvs, offer_letters) are strictly protected and served via authenticated views
+    logos_dir = settings.MEDIA_ROOT / "logos"
+    os.makedirs(logos_dir, exist_ok=True)
+    urlpatterns += static(settings.MEDIA_URL + "logos/", document_root=logos_dir)

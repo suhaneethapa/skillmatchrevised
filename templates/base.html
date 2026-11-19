@@ -35,7 +35,12 @@
                     {% elif user.is_superuser %}
                         <li><a href="{% url 'admin_panel:dashboard' %}" {% if ns == 'admin_panel' %}class="active"{% endif %}>Admin Panel</a></li>
                     {% endif %}
-                    <li><a href="{% url 'accounts:logout' %}">Logout</a></li>
+                    <li>
+                        <form method="post" action="{% url 'accounts:logout' %}" style="display: inline; margin: 0; padding: 0;">
+                            {% csrf_token %}
+                            <button type="submit" style="background: none; border: none; padding: 6px 12px; border-radius: var(--sm-radius-sm); color: var(--sm-text-muted); font-size: 0.9rem; font-family: inherit; cursor: pointer;" onmouseover="this.style.color='var(--sm-text)';this.style.background='var(--sm-muted-bg)';" onmouseout="this.style.color='var(--sm-text-muted)';this.style.background='none';">Logout</button>
+                        </form>
+                    </li>
                 {% else %}
                     <li><a href="{% url 'students:browse_internships' %}" {% if ns == 'students' and url_name == 'browse_internships' %}class="active"{% endif %}>Browse</a></li>
                     <li><a href="{% url 'accounts:login' %}" {% if ns == 'accounts' and url_name == 'login' %}class="active"{% endif %}>Login</a></li>

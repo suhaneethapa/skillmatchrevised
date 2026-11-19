@@ -4,12 +4,20 @@
 
 {% block content %}
 <div class="internship-page">
+    {% if request.user.status != 'active' %}
+    <div class="sm-alert sm-alert-warning" style="margin-bottom: 20px;">
+        <span><strong>Account Awaiting Approval:</strong> Your company registration is currently pending administrator review. You will be able to publish and manage internship listings once approved.</span>
+    </div>
+    {% endif %}
+
     <!-- Page Header -->
     <div class="sm-page-header">
         <h4 class="sm-page-title">{{ profile.organization_name }}</h4>
         <div class="sm-actions">
             <a href="{% url 'companies:profile' %}" class="sm-btn sm-btn-outline sm-btn-sm">Profile</a>
+            {% if request.user.status == 'active' and not profile.suspended %}
             <a href="{% url 'companies:create_listing' %}" class="sm-btn sm-btn-primary sm-btn-sm">+ Post Internship</a>
+            {% endif %}
         </div>
     </div>
 

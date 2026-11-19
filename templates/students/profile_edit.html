@@ -44,7 +44,7 @@
                 <label for="cv_file">CV Upload (PDF or DOCX, max 5MB)</label>
                 <input type="file" name="cv_file" id="cv_file" class="sm-input" accept=".pdf,.docx">
                 {% if profile.cv_file %}
-                    <p class="sm-help">Current: <a href="{{ profile.cv_file.url }}" target="_blank">{{ profile.cv_file.name }}</a></p>
+                    <p class="sm-help">Current: <a href="{% url 'students:view_my_cv' %}" target="_blank">{{ profile.cv_file.name }}</a></p>
                 {% endif %}
             </div>
             <div class="sm-actions">

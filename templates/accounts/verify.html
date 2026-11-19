@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block title %}Verify Email Address - SkillMatch{% endblock %}
+
+{% block content %}
+<div class="sm-narrow">
+    <div class="sm-card sm-card-pad">
+        {% if valid %}
+            <h4 style="margin-bottom: 8px;">Confirm Email Verification</h4>
+            <p class="sm-muted sm-small" style="margin-bottom: 16px;">
+                You are verifying the email address <strong>{{ user_email }}</strong> for your SkillMatch account.
+            </p>
+            <div class="sm-alert sm-alert-info" style="margin-bottom: 20px;">
+                Once confirmed, your email ownership will be verified and your account will be placed in queue for administrator approval.
+            </div>
+
+            <form method="post" action="{% url 'accounts:verify_email' token=token %}">
+                {% csrf_token %}
+                <button type="submit" class="sm-btn sm-btn-primary sm-btn-block">Confirm Email Verification</button>
+            </form>
+        {% else %}
+            <h4 style="margin-bottom: 12px; color: var(--sm-danger);">{{ error_title }}</h4>
+            <p class="sm-muted" style="margin-bottom: 24px;">
+                {{ error_message }}
+            </p>
+            <a href="{% url 'accounts:login' %}" class="sm-btn sm-btn-outline sm-btn-block">Return to Login</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

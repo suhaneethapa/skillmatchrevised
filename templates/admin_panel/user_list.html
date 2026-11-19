@@ -30,13 +30,40 @@
             <tr>
                 <td>{{ user.id }}</td>
                 <td>{{ user.email }}</td>
-                <td><span class="badge {% if user.role == 'student' %}badge-info{% elif user.role == 'company' %}badge-primary{% else %}badge-muted{% endif %}">{{ user.role|title }}</span></td>
-                <td><span class="badge {% if user.status == 'active' %}badge-success{% elif user.status == 'pending_admin' %}badge-warning{% else %}badge-muted{% endif %}">{{ user.status|title }}</span></td>
+                <td>
+                    <span class="badge {% if user.role == 'student' %}badge-info{% elif user.role == 'company' %}badge-primary{% else %}badge-muted{% endif %}">{{ user.role|title }}</span>
+                    {% if user.role == 'student' and user.student_profile %}
+                        <div style="font-size: 0.78rem; margin-top: 4px; color: var(--sm-text-muted);">
+                            {{ user.student_profile.college.name }}
+                            {% if user.student_profile.college_verified %}
+                                <span class="badge badge-success" style="font-size: 0.72rem; padding: 2px 6px;">Verified</span>
+                            {% else %}
+                                <span class="badge badge-warning" style="font-size: 0.72rem; padding: 2px 6px;">Unverified</span>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </td>
+                <td><span class="badge {% if user.status == 'active' %}badge-success{% elif user.status == 'pending_admin' %}badge-warning{% elif user.status == 'pending_email' %}badge-warning{% elif user.status == 'suspended' %}badge-danger{% else %}badge-muted{% endif %}">{{ user.status|title }}</span></td>
                 <td>{{ user.date_joined|date:"M d, Y" }}</td>
                 <td>
-                    <a href="{% url 'admin_panel:toggle_user' user.id %}" class="sm-btn sm-btn-sm {% if user.status == 'active' %}sm-btn-danger-outline{% else %}sm-btn-success{% endif %}">
-                        {% if user.status == 'active' %}Suspend{% elif user.status == 'suspended' %}Reinstate{% else %}Activate{% endif %}
-                    </a>
+                    {% if user.status == 'pending_email' %}
+                        <span class="sm-muted sm-small">Awaiting Email</span>
+                    {% else %}
+                        <form method="post" action="{% url 'admin_panel:toggle_user' user.id %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="sm-btn sm-btn-sm {% if user.status == 'active' %}sm-btn-danger-outline{% else %}sm-btn-success{% endif %}">
+                                {% if user.status == 'active' %}Suspend{% elif user.status == 'suspended' %}Reinstate{% else %}Activate{% endif %}
+                            </button>
+                        </form>
+                    {% endif %}
+                    {% if user.role == 'student' and user.student_profile %}
+                        <form method="post" action="{% url 'admin_panel:verify_student_college' user.id %}" style="display: inline; margin-left: 4px;">
+                            {% csrf_token %}
+                            <button type="submit" class="sm-btn sm-btn-sm sm-btn-outline">
+                                {% if user.student_profile.college_verified %}Unverify College{% else %}Verify College{% endif %}
+                            </button>
+                        </form>
+                    {% endif %}
                 </td>
             </tr>
             {% empty %}

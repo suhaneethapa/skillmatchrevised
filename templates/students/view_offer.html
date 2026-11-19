@@ -15,7 +15,7 @@
         {% if application.offer_letter %}
             <div style="border: 1px solid var(--sm-border); border-radius: var(--sm-radius); padding: 16px; margin-bottom: 18px;">
                 <h6 style="font-size: 0.85rem; margin-bottom: 10px;">Offer Letter</h6>
-                <a href="{{ application.offer_letter.url }}" target="_blank" class="sm-btn sm-btn-outline sm-btn-sm">View Offer Letter PDF</a>
+                <a href="{% url 'students:view_offer_letter' application.id %}" target="_blank" class="sm-btn sm-btn-outline sm-btn-sm">View Offer Letter PDF</a>
             </div>
         {% else %}
             <div class="sm-alert sm-alert-warning" style="margin-bottom: 18px;">
@@ -23,9 +23,15 @@
             </div>
         {% endif %}
 
-        <div class="sm-actions">
-            <a href="{% url 'students:accept_offer' application.id %}" class="sm-btn sm-btn-success" onclick="return confirm('Accept this offer? This will confirm your placement.')">Accept Offer</a>
-            <a href="{% url 'students:decline_offer' application.id %}" class="sm-btn sm-btn-danger-outline" onclick="return confirm('Decline this offer? This cannot be undone.')">Decline</a>
+        <div class="sm-actions" style="display: flex; gap: 12px;">
+            <form method="post" action="{% url 'students:accept_offer' application.id %}" onsubmit="return confirm('Accept this offer? This will confirm your placement.');" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="sm-btn sm-btn-success">Accept Offer</button>
+            </form>
+            <form method="post" action="{% url 'students:decline_offer' application.id %}" onsubmit="return confirm('Decline this offer? This cannot be undone.');" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="sm-btn sm-btn-danger-outline">Decline</button>
+            </form>
         </div>
     </div>
 </div>
